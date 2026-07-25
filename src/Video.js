@@ -547,11 +547,11 @@ export const Video = (props) => {
   // Scale every section proportionally so the rendered total equals timing.total_frames.
   const originalTotal = sections.reduce((sum, s) => sum + (s.duration_frames || 0), 0);
   const targetTotal = timing.total_frames + transitionCount * effectiveTransitionFrames;
-  const scaleFactor = originalTotal > 0 ? targetTotal / originalTotal : 1;
+  const audioScale = originalTotal > 0 ? targetTotal / originalTotal : 1;
 
   const compensatedSections = sections.map((s) => ({
     ...s,
-    duration_frames: Math.max(15, Math.round((s.duration_frames || 0) * scaleFactor)),
+    duration_frames: Math.max(15, Math.round((s.duration_frames || 0) * audioScale)),
   }));
 
   // Absorb rounding error into the last section so total matches exactly.
@@ -564,7 +564,7 @@ export const Video = (props) => {
 
   return (
     <AbsoluteFill style={{ backgroundColor: props.backgroundColor }}>
-      <Scale4K orientation={props.orientation}>
+      <Scale4K orientation={props.orientation} scaleFactor={props.scaleFactor}>
         <TransitionSeries>
           {compensatedSections.map((section, i) => (
             <React.Fragment key={section.name}>
@@ -582,12 +582,17 @@ export const Video = (props) => {
         </TransitionSeries>
       </Scale4K>
 
-      {/* Progress bar — outside scale(2), renders at native 4K */}
+      {/* Progress bar — outside scale, renders at native resolution */}
       <ChapterProgressBar props={props} chapters={timing.sections} />
 
-      {/* Subtitles — outside scale(2), renders at native 4K, no FFmpeg needed */}
+      {/* Subtitles — outside scale, font scaled to native resolution. */}
       {props.enableSubtitles && (
-        <Subtitles src={staticFile("podcast_audio.srt")} />
+        <Subtitles
+          src={staticFile("podcast_audio.srt")}
+          fontSize={props.scaleFactor * 40}
+          bgBorderRadius={props.scaleFactor * 8}
+          bottomOffset={props.scaleFactor * 28}
+        />
       )}
 
       {/* BGM — only when bgmVolume > 0. Mix via FFmpeg post-render to avoid

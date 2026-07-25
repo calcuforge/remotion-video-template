@@ -1,16 +1,21 @@
 import { AbsoluteFill } from "remotion";
 
 /**
- * Scale4K — 4K scaling wrapper.
- * Design at half resolution (1920×1080 or 1080×1920), auto-scale to 4K.
- * Wrap the entire composition body so all inner sizes can use 1080p-space numbers.
+ * ScaleToTarget — resolution-agnostic scaling wrapper.
+ * Design at a fixed logical size (1920×1080 or 1080×1920), then scale up.
+ *
+ *   scaleFactor=1 → 1080p (design IS the output)
+ *   scaleFactor=2 → 4K   (design × 2)
+ *
+ * Wrap the entire composition body so all inner sizes use the same
+ * logical numbers regardless of output resolution.
  */
-export const Scale4K = ({ children, orientation = "horizontal" }) => {
+export const Scale4K = ({ children, orientation = "horizontal", scaleFactor = 1 }) => {
   const isVertical = orientation === "vertical";
   const w = isVertical ? 1080 : 1920;
   const h = isVertical ? 1920 : 1080;
   return (
-    <AbsoluteFill style={{ transform: "scale(2)", transformOrigin: "top left" }}>
+    <AbsoluteFill style={{ transform: `scale(${scaleFactor})`, transformOrigin: "top left" }}>
       <div style={{ width: w, height: h, position: "relative", overflow: "hidden" }}>
         {children}
       </div>

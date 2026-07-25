@@ -2,8 +2,10 @@
 
 A general-purpose Remotion video template for explainer, documentary,
 knowledge-sharing, product-introduction, and news-broadcast videos.
-Renders 4K (3840×2160) horizontal or 2160×3840 vertical, with a 4K-native
-subtitle layer and chapter progress bar.
+
+Three output formats: **1080p horizontal (1920×1080), 4K horizontal
+(3840×2160), and 1080p vertical (1080×1920)**. All share the same
+1920×1080 design space — 4K is the same composition with `scale(2)`.
 
 - **Language**: JavaScript (JSX). No TypeScript.
 - **Component library**: 30+ composable React components for sections,
@@ -25,6 +27,12 @@ Studio opens at <http://localhost:3000>. Use the right-side panel to edit
 colors, fonts, transitions, and toggles. The composition scrubs through
 `public/timing.json` sections; each `name` maps to a case in `src/Video.js`.
 
+Three compositions are registered:
+
+- **MainVideo** — 1080p horizontal (1920×1080)
+- **MainVideo4K** — 4K horizontal (3840×2160), same design as 1080p ×2
+- **MainVideoVertical** — 1080p vertical (1080×1920)
+
 ## Project structure
 
 ```
@@ -36,7 +44,6 @@ remotion-video-template/
 │   ├── index.js          # registerRoot entry
 │   ├── Root.js           # Compositions + Zod schema + default props
 │   ├── Video.js          # Main composition (section switch)
-│   ├── Thumbnail.js      # Thumbnail for 16:9 / 4:3 / 3:4 / 9:16
 │   └── components/
 │       ├── index.js             # barrel — import from "./components"
 │       ├── layouts.js            # Scale4K, FullBleedLayout, PaddedLayout
@@ -164,29 +171,26 @@ The `videoSchema` in `src/Root.js` exposes:
 
 ## Compositions registered in Root.js
 
-| ID | Type | Resolution | Notes |
-|----|------|------------|-------|
-| `MainVideo` | Composition | 3840×2160 | 4K horizontal, 30fps, duration from timing.json |
-| `MainVideoVertical` | Composition | 2160×3840 | 4K vertical (9:16) |
-| `Thumbnail16x9` | Still | 1920×1080 | YouTube / Bilibili cover |
-| `Thumbnail4x3` | Still | 1200×900 | Bilibili feed |
-| `Thumbnail3x4` | Still | 1080×1440 | Xiaohongshu cover |
-| `Thumbnail9x16` | Still | 1080×1920 | Shorts / Reels / Douyin cover |
+| ID | Resolution | Design | scaleFactor |
+|----|------------|--------|-------------|
+| `MainVideo` | 1920×1080 | 1920×1080 (1×) | 1 |
+| `MainVideo4K` | 3840×2160 | 1920×1080 (2×) | 2 |
+| `MainVideoVertical` | 1080×1920 | 1080×1920 (1×) | 1 |
+
+All three share the same Zod schema and `Video.js` composition — only the
+output resolution and `scaleFactor` prop differ.
 
 ## Rendering
 
 ```bash
-# Horizontal 4K
-npx remotion render src/index.js MainVideo public/output.mp4 --public-dir public --video-bitrate 16M
+# 1080p Horizontal
+npx remotion render src/index.js MainVideo public/output_1080p.mp4 --public-dir public
 
-# Vertical 4K
-npx remotion render src/index.js MainVideoVertical public/output_vertical.mp4 --public-dir public --video-bitrate 16M
+# 4K Horizontal
+npx remotion render src/index.js MainVideo4K public/output_4k.mp4 --public-dir public --video-bitrate 16M
 
-# Thumbnails
-npx remotion still src/index.js Thumbnail16x9 public/thumbnail_16x9.png --public-dir public
-npx remotion still src/index.js Thumbnail4x3 public/thumbnail_4x3.png --public-dir public
-npx remotion still src/index.js Thumbnail3x4 public/thumbnail_3x4.png --public-dir public
-npx remotion still src/index.js Thumbnail9x16 public/thumbnail_9x16.png --public-dir public
+# 1080p Vertical
+npx remotion render src/index.js MainVideoVertical public/output_vertical.mp4 --public-dir public
 ```
 
 Use `--public-dir` to point at a different asset folder per video
