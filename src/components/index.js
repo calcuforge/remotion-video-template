@@ -33,6 +33,9 @@
  *   useTiming, fetchTimingData,
  *   useAssets, getAsset, getSectionAssets, assetSrc,
  *   AssetImage, AssetVideo, OverlayLayer
+ *
+ * Transitions (re-exported from @remotion/transitions):
+ *   TransitionSeries, linearTiming
  */
 
 // Layouts
@@ -85,6 +88,11 @@ export { Subtitles } from "./Subtitles.js";
 
 // Timing (runtime loading via staticFile, supports --public-dir)
 export { useTiming, fetchTimingData } from "./useTiming.js";
+
+// Transitions (re-exported so per-video compositions outside this package can
+// import them via this barrel's absolute path — bare "@remotion/transitions"
+// imports only resolve within this package's node_modules tree)
+export { TransitionSeries, linearTiming } from "@remotion/transitions";
 
 // Asset manifest (assets/manifest.json via --public-dir)
 export { useAssets, getAsset, getSectionAssets, assetSrc } from "./useAssets.js";
