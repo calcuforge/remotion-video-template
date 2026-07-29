@@ -72,7 +72,7 @@ stories:
       - total_frame: 120
         remotion_component: QuoteBlock
         remotion_data:
-          title: "Optional section title"
+          heading: "Optional section title"
           quote: "The quote text to display."
           attribution: "Author Name"
         audio: narration/chapter1.wav   # optional per-section audio
@@ -278,7 +278,7 @@ remotion_data:
 ```yaml
 remotion_component: DiagramReveal
 remotion_data:
-  title: "System Architecture"
+  heading: "System Architecture"
   direction: vertical         # "vertical" (default) or "horizontal"
   nodes:
     - id: "input"
@@ -299,7 +299,7 @@ remotion_data:
 ```yaml
 remotion_component: AnimationDemo
 remotion_data:
-  title: "Animation Demo"
+  heading: "Animation Demo"
   type: shapes               # shapes | particles | waves | clock
   color: "#4f6ef7"           # optional, defaults to primaryColor
 ```

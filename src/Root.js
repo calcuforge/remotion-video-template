@@ -163,7 +163,7 @@ const defaultYamlConfig = {
           total_frame: 120,
           remotion_component: "QuoteBlock",
           remotion_data: {
-            title: "Welcome",
+            heading: "Welcome",
             quote: "This is a sample section rendered from YAML config.",
             attribution: "YamlVideo",
           },
@@ -173,7 +173,7 @@ const defaultYamlConfig = {
           total_frame: 120,
           remotion_component: "FeatureGrid",
           remotion_data: {
-            title: "Features",
+            heading: "Features",
             items: [
               { icon: "zap", title: "Fast", description: "Quick rendering" },
               { icon: "palette", title: "Customizable", description: "Full control" },
