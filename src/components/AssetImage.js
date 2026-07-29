@@ -1,5 +1,5 @@
 import { AbsoluteFill, Img, interpolate, useCurrentFrame } from "remotion";
-import { MediaSection } from "./MediaSection.js";
+import { useEntrance } from "./animations.js";
 import { useAssets, getAsset, assetSrc } from "./useAssets.js";
 
 /**
@@ -19,13 +19,13 @@ export const AssetImage = ({
   src,
   role = "inline",
   caption,
-  layout = "full",
   kenBurns = true,
   dim = 0.35,
   delay = 0,
 }) => {
   const manifest = useAssets();
   const frame = useCurrentFrame();
+  const a = useEntrance(props.enableAnimations, delay, "gentle");
 
   const entry = id ? getAsset(manifest, id) : null;
   const resolvedSrc = src ?? (entry ? assetSrc(entry) : null);
@@ -57,12 +57,30 @@ export const AssetImage = ({
   }
 
   return (
-    <MediaSection
-      props={props}
-      src={resolvedSrc}
-      caption={caption ?? entry?.credit}
-      layout={layout}
-      delay={delay}
-    />
+    <div
+      style={{
+        width: "100%",
+        borderRadius: 24,
+        overflow: "hidden",
+        border: `1px solid ${props.primaryColor}20`,
+        boxShadow: `0 4px 16px ${props.primaryColor}10, 0 8px 24px rgba(0,0,0,0.06)`,
+        opacity: a.opacity,
+        transform: `translateY(${a.translateY}px) scale(${a.scale})`,
+      }}
+    >
+      <Img
+        src={resolvedSrc}
+        style={{ width: "100%", display: "block" }}
+      />
+      {caption && (
+        <div style={{
+          fontSize: 24, color: props.textColor, opacity: 0.6,
+          padding: "12px 24px", textAlign: "center",
+          background: "rgba(0,0,0,0.02)",
+        }}>
+          {caption}
+        </div>
+      )}
+    </div>
   );
 };

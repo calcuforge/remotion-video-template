@@ -8,10 +8,10 @@ import { useTiming } from "./useTiming.js";
  * Driven by timing.json's sections (each section is one chapter segment).
  * Set `showProgressBar: false` in props to hide.
  */
-export const ChapterProgressBar = ({ props, chapters }) => {
+export const ChapterProgressBar = ({ props, chapters, totalFrames: totalFramesOverride }) => {
   const frame = useCurrentFrame();
-  const timing = useTiming();
-  const totalFrames = timing.total_frames;
+  const timing = useTiming(true);
+  const totalFrames = totalFramesOverride ?? timing.total_frames;
   const progress = totalFrames > 0 ? frame / totalFrames : 0;
 
   if (!props.showProgressBar) return null;

@@ -24,7 +24,10 @@ function fetchTiming() {
     pending.set(
       url,
       fetch(url)
-        .then((r) => r.json())
+        .then((r) => {
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          return r.json();
+        })
         .then((data) => {
           cache.set(url, data);
           return data;
@@ -34,12 +37,17 @@ function fetchTiming() {
   return pending.get(url);
 }
 
+const DEFAULT_TIMING = { total_duration: 0, fps: 24, total_frames: 1, sections: [] };
+
 /**
  * useTiming — load timing.json at runtime via staticFile().
  * Works with --public-dir so each video can have its own timing data.
  * Uses delayRender/continueRender to block rendering until loaded.
+ *
+ * Set fallback=true to return default empty timing when timing.json is
+ * absent (useful when the composition doesn't depend on a timing file).
  */
-export const useTiming = () => {
+export const useTiming = (fallback = false) => {
   const url = staticFile("timing.json");
   const cached = cache.get(url) ?? null;
   const [timing, setTiming] = useState(cached);
@@ -58,14 +66,19 @@ export const useTiming = () => {
         if (handle !== null) continueRender(handle);
       })
       .catch((err) => {
-        cancelRender(
-          new Error(`Failed to load timing.json from --public-dir: ${err}`),
-        );
+        if (fallback) {
+          setTiming(DEFAULT_TIMING);
+          if (handle !== null) continueRender(handle);
+        } else {
+          cancelRender(
+            new Error(`Failed to load timing.json from --public-dir: ${err}`),
+          );
+        }
       });
-  }, [handle, cached]);
+  }, [handle, cached, fallback]);
 
   if (!timing) {
-    return { total_duration: 0, fps: 24, total_frames: 1, sections: [] };
+    return DEFAULT_TIMING;
   }
   return timing;
 };

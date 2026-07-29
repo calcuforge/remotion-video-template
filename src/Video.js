@@ -40,15 +40,8 @@ import {
   DataBar,
   StatCounter,
   FlowChart,
-  MediaSection,
   DataTable,
   DiagramReveal,
-  SplitLayout,
-  StatHighlight,
-  ZigzagCards,
-  CenteredShowcase,
-  MetricsRow,
-  StepProgress,
   MovingGradient,
   FloatingShapes,
   GlowOrb,
@@ -143,40 +136,6 @@ const SectionComponent = ({ section, props }) => {
             </div>
           </div>
         </PaddedLayout>
-      );
-
-    // ─── Stat Highlight — single big number ────────────────────────────
-    // Best for: data punchline, market size, impact stat
-    case "stat":
-      return (
-        <StatHighlight
-          props={props}
-          value="73"
-          unit="%"
-          label="of viewers finish the video"
-          description="Source: your data, year, methodology"
-        />
-      );
-
-    // ─── SplitLayout — text left, visual right ─────────────────────────
-    // Best for: feature deep-dive, product showcase, concept explanation
-    case "feature":
-      return (
-        <SplitLayout
-          props={props}
-          title="Feature Deep Dive"
-          description="Explain what this feature does and why it matters. Two or three sentences is enough — the visual on the right does the heavy lifting."
-          rightContent={
-            <div style={{
-              width: 320, height: 320, borderRadius: 32,
-              background: `linear-gradient(135deg, ${props.primaryColor}, ${props.accentColor})`,
-              boxShadow: `0 16px 48px ${props.primaryColor}30`,
-              display: "flex", alignItems: "center", justifyContent: "center",
-            }}>
-              <Icon name="sparkles" size={120} color="#fff" animate="pulse" />
-            </div>
-          }
-        />
       );
 
     // ─── Comparison — A vs B ────────────────────────────────────────────
@@ -342,37 +301,6 @@ const SectionComponent = ({ section, props }) => {
             />
           </div>
         </PaddedLayout>
-      );
-
-    // ─── MetricsRow — KPI dashboard ────────────────────────────────────
-    // Best for: benchmark results, KPI summary, comparison stats
-    case "metrics":
-      return (
-        <MetricsRow
-          props={props}
-          title="Key Metrics"
-          metrics={[
-            { value: "2.4M", label: "Active users", icon: "users" },
-            { value: "98%", label: "Uptime", icon: "shield-check" },
-            { value: "180+", label: "Countries", icon: "globe" },
-            { value: "4.9★", label: "Avg rating", icon: "star" },
-          ]}
-        />
-      );
-
-    // ─── StepProgress — numbered steps ─────────────────────────────────
-    // Best for: tutorial steps, setup guide, decision tree
-    case "steps":
-      return (
-        <StepProgress
-          props={props}
-          title="Three Steps"
-          steps={[
-            { label: "Sign up", description: "Create your account" },
-            { label: "Connect", description: "Link your data source" },
-            { label: "Publish", description: "Go live in minutes" },
-          ]}
-        />
       );
 
     // ─── DiagramReveal — animated SVG flow diagram ─────────────────────
