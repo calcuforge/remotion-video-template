@@ -176,7 +176,7 @@ const SectionRenderer = ({ section, themeProps, frameOffset }) => {
         padding: themeProps.orientation === "vertical" ? "120px 60px 160px" : "60px 100px 120px",
         opacity, transform: `translateY(${translateY}px) scale(${scale})`,
       }}>
-        {data.title && (
+        {data.heading && (
           <h2 style={{
             fontSize: themeProps.titleSize,
             fontWeight: 700,
@@ -184,7 +184,7 @@ const SectionRenderer = ({ section, themeProps, frameOffset }) => {
             textAlign: "center",
             marginBottom: themeProps.orientation === "vertical" ? 32 : 40,
           }}>
-            {data.title}
+            {data.heading}
           </h2>
         )}
         {inner}

@@ -118,7 +118,7 @@ Each section in `section_list` specifies a `remotion_component` and
 ```yaml
 remotion_component: QuoteBlock
 remotion_data:
-  title: "Optional Section Title"
+  heading: "Optional Section Title"
   quote: "The quote text goes here."
   attribution: "Author Name"
 ```
@@ -128,7 +128,7 @@ remotion_data:
 ```yaml
 remotion_component: FeatureGrid
 remotion_data:
-  title: "Key Features"
+  heading: "Key Features"
   columns: 3          # optional, default 3
   items:
     - icon: zap
@@ -147,9 +147,9 @@ remotion_data:
 ```yaml
 remotion_component: IconCard
 remotion_data:
-  title: "Section Title"
+  heading: "Section Title"
   icon: lightbulb
-  title: "Key Point"       # (the card's own title)
+  title: "Key Point"
   description: "Supporting detail text."
 ```
 
@@ -158,7 +158,7 @@ remotion_data:
 ```yaml
 remotion_component: ComparisonCard
 remotion_data:
-  title: "Before vs After"
+  heading: "Before vs After"
   left:
     title: "Before"
     items:
@@ -180,7 +180,7 @@ remotion_data:
 ```yaml
 remotion_component: StatCounter
 remotion_data:
-  title: "Key Metrics"
+  heading: "Key Metrics"
   items:
     - value: 73
       suffix: "%"
@@ -197,7 +197,7 @@ remotion_data:
 ```yaml
 remotion_component: DataBar
 remotion_data:
-  title: "Survey Results"
+  heading: "Survey Results"
   items:
     - label: "Category A"
       value: 82
@@ -215,7 +215,7 @@ absolute-value mode.
 ```yaml
 remotion_component: Timeline
 remotion_data:
-  title: "Project Timeline"
+  heading: "Project Timeline"
   items:
     - label: "2018"
       description: "Project founded"
