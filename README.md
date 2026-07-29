@@ -230,7 +230,7 @@ remotion_data:
 ```yaml
 remotion_component: FlowChart
 remotion_data:
-  title: "How It Works"
+  heading: "How It Works"
   steps:
     - label: "Input"
       description: "Raw data ingestion"
@@ -248,8 +248,8 @@ remotion_data:
 ```yaml
 remotion_component: CodeBlock
 remotion_data:
-  title: "Installation"
-  windowTitle: "terminal"     # optional, default "terminal"
+  heading: "Installation"
+  title: "terminal"           # optional, default "terminal"
   lines:
     - "$ npm install my-package"
     - "$ npx my-package init"
@@ -261,7 +261,7 @@ remotion_data:
 ```yaml
 remotion_component: DataTable
 remotion_data:
-  title: "Comparison Table"
+  heading: "Comparison Table"
   headers:
     - "Name"
     - "Speed"
