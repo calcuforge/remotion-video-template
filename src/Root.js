@@ -2,9 +2,9 @@
  * Root.js — Remotion composition registration.
  *
  * Compositions:
- *   - MainVideo        : 1080p horizontal (1920×1080), 16:9, 30fps
- *   - MainVideo4K      : 4K horizontal (3840×2160), 16:9, 30fps
- *   - MainVideoVertical: 1080p vertical (1080×1920), 9:16, 30fps
+ *   - MainVideo        : 1080p horizontal (1920×1080), 16:9, 24fps
+ *   - MainVideo4K      : 4K horizontal (3840×2160), 16:9, 24fps
+ *   - MainVideoVertical: 1080p vertical (1080×1920), 9:16, 24fps
  *
  * The videoSchema (Zod) below drives Remotion Studio's right-side editable
  * properties panel — change colors, sizes, transitions, etc. live.
@@ -47,7 +47,7 @@ export const videoSchema = z.object({
 
   // Transitions
   transitionType: z.enum(["fade", "slide", "wipe", "none"]).describe("Chapter transition type"),
-  transitionDuration: z.number().min(0).max(30).describe("Transition duration (frames; 30 = 1s)"),
+  transitionDuration: z.number().min(0).max(24).describe("Transition duration (frames; 24 = 1s)"),
 
   // Internal — set per composition, not user-editable
   scaleFactor: z.number().min(1).max(2).describe("1=1080p, 2=4K"),
@@ -104,7 +104,7 @@ export const RemotionRoot = () => {
         component={Video}
         durationInFrames={300}
         calculateMetadata={calculateVideoMetadata}
-        fps={30}
+        fps={24}
         width={1920}
         height={1080}
         schema={videoSchema}
@@ -117,7 +117,7 @@ export const RemotionRoot = () => {
         component={Video}
         durationInFrames={300}
         calculateMetadata={calculateVideoMetadata}
-        fps={30}
+        fps={24}
         width={3840}
         height={2160}
         schema={videoSchema}
@@ -135,7 +135,7 @@ export const RemotionRoot = () => {
         component={Video}
         durationInFrames={300}
         calculateMetadata={calculateVideoMetadata}
-        fps={30}
+        fps={24}
         width={1080}
         height={1920}
         schema={videoSchema}

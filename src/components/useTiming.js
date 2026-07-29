@@ -5,7 +5,7 @@ import { staticFile, delayRender, continueRender, cancelRender } from "remotion"
  * timing.json schema (sample):
  * {
  *   "total_duration": 60.0,      // seconds
- *   "fps": 30,
+ *   "fps": 24,
  *   "total_frames": 1800,
  *   "sections": [
  *     { "name": "hero", "label": "开场", "start_time": 0.0, "end_time": 5.0,
@@ -65,7 +65,7 @@ export const useTiming = () => {
   }, [handle, cached]);
 
   if (!timing) {
-    return { total_duration: 0, fps: 30, total_frames: 1, sections: [] };
+    return { total_duration: 0, fps: 24, total_frames: 1, sections: [] };
   }
   return timing;
 };

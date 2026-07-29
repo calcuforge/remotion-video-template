@@ -10,7 +10,7 @@ import { useAssets, getAsset, assetSrc } from "./useAssets.js";
  * For the manifest flow:
  *   <OverlayLayer id="growth_chart" />
  *
- * Format contract: WebM VP9 with alpha (yuva420p), 30 fps, 3840×2160,
+ * Format contract: WebM VP9 with alpha (yuva420p), 24 fps, 3840×2160,
  * duration matching the section window. WebM previews natively in Studio;
  * `transparent` extracts alpha frames during render. Renders nothing when
  * the asset is unresolved.

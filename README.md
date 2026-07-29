@@ -73,7 +73,7 @@ remotion-video-template/
 │       ├── useTiming.js         # loads timing.json via staticFile
 │       └── useAssets.js         # loads assets/manifest.json
 └── public/
-    ├── timing.json              # sample — 14 sections, 75s @ 30fps
+    ├── timing.json              # sample — 14 sections, 75s @ 24fps
     ├── podcast.txt              # sample narration script
     ├── podcast_audio.wav        # YOU provide (TTS output)
     ├── podcast_audio.srt        # YOU provide (subtitle file)
@@ -98,7 +98,7 @@ produce this file from the real audio lengths (don't hand-estimate).
 
 Each section needs: `name`, `label` (shown on the progress bar),
 `start_time`, `end_time`, `duration` (seconds), `start_frame`,
-`duration_frames` (at 30 fps).
+`duration_frames` (at 24 fps).
 
 ### 3. Edit the visuals
 
