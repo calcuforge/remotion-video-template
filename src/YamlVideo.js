@@ -78,6 +78,9 @@ const flattenStories = (stories) => {
     for (const section of story.section_list || []) {
       const narrationStart = frameCursor;
       const sceneList = section.scene_list || [];
+      // Index (in the flat `scenes` array) of this section's first scene — used
+      // to align the narration audio with the scene's rendered start frame.
+      const firstSceneIndex = scenes.length;
 
       for (const scene of sceneList) {
         scenes.push({
@@ -94,6 +97,7 @@ const flattenStories = (stories) => {
           src: section.audio,
           startFrame: narrationStart,
           durationFrames: frameCursor - narrationStart,
+          firstSceneIndex,
         });
       }
     }
@@ -299,15 +303,17 @@ export const YamlVideo = ({ config }) => {
   const targetTotal = totalFrames + transitionCount * effectiveTransitionFrames;
   const audioScale = totalFrames > 0 ? targetTotal / totalFrames : 1;
 
-  // Collect subtitle list from config and map it into rendered frame space.
-  // Subtitles are authored in raw audio frames (the same space as scene.total_frame).
-  // The timeline is stretched by audioScale to accommodate transition overlaps, and
-  // the narration audio is placed at those same scaled offsets — so subtitles must
-  // be scaled identically, otherwise they drift progressively out of sync with the audio.
-  const subtitleList = (config.subtitle?.list || []).map((s) => ({
+  // Map subtitles (authored in raw audio frames, one per scene in scene order)
+  // into rendered frame space. Two adjustments align them with the visuals:
+  //   1. × audioScale — the timeline is stretched to accommodate transitions.
+  //   2. − i·effectiveTransitionFrames — TransitionSeries overlaps each adjacent
+  //      scene by the transition duration, so scene i actually starts i overlaps
+  //      earlier than the naive scaled cumulative sum. Without this, subtitles
+  //      (and audio) drift progressively LATER than the visuals.
+  const subtitleList = (config.subtitle?.list || []).map((s, i) => ({
     ...s,
-    start_frame: Math.round((s.start_frame || 0) * audioScale),
-    end_frame: Math.round((s.end_frame || 0) * audioScale),
+    start_frame: Math.max(0, Math.round((s.start_frame || 0) * audioScale) - i * effectiveTransitionFrames),
+    end_frame: Math.max(0, Math.round((s.end_frame || 0) * audioScale) - i * effectiveTransitionFrames),
   }));
 
   return (
@@ -333,9 +339,15 @@ export const YamlVideo = ({ config }) => {
           })}
         </TransitionSeries>
 
-        {/* Audio track: narration-level audio overlaid at correct frame offsets */}
+        {/* Audio track: narration-level audio overlaid at the rendered start frame
+            of its section's first scene. The − firstSceneIndex·effectiveTransitionFrames
+            term compensates for TransitionSeries overlaps so the narration begins
+            exactly when its scene appears (otherwise audio drifts later than the visuals). */}
         {audioTracks.map((track, i) => {
-          const scaledStart = Math.round(track.startFrame * audioScale);
+          const scaledStart = Math.max(
+            0,
+            Math.round(track.startFrame * audioScale) - track.firstSceneIndex * effectiveTransitionFrames,
+          );
           return (
             <Sequence key={`audio_${i}`} from={scaledStart} layout="none">
               <Audio src={resolveAssetSrc(track.src)} />

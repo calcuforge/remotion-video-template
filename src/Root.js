@@ -128,9 +128,8 @@ const calculateVideoMetadata = async ({ props }) => {
 // ─── YAML config metadata (compute duration from sections) ──────────────
 const calculateYamlMetadata = ({ props }) => {
   const config = props.config || {};
-  let totalFrames = 300;
 
-  // Flatten all scenes to count total frames
+  // Flatten all scenes
   const allScenes = [];
   for (const story of config.stories || []) {
     for (const section of story.section_list || []) {
@@ -140,21 +139,32 @@ const calculateYamlMetadata = ({ props }) => {
     }
   }
 
-  if (allScenes.length > 0) {
-    totalFrames = 0;
-    for (const scene of allScenes) {
-      totalFrames += scene.total_frame || 120;
-    }
-    // Add transition frames (matching YamlVideo.js audioScale logic)
-    const transitionType = config.theme?.transition_type || "fade";
-    const transitionFrames = Math.round(config.theme?.transition_duration || 12);
-    const transitionCount = allScenes.length - 1;
-    if (transitionType !== "none" && transitionFrames > 0) {
-      totalFrames += transitionCount * transitionFrames;
-    }
+  if (allScenes.length === 0) {
+    return { durationInFrames: 300, props };
   }
 
-  return { durationInFrames: totalFrames || 300, props };
+  // Mirror YamlVideo.js exactly: the TransitionSeries renders each scene at
+  // round(total_frame * audioScale) and overlaps adjacent scenes by the
+  // transition duration, so its real duration is the stretched scene sum MINUS
+  // the transition overlaps. Using the naive sum + transition frames here would
+  // make the composition longer than the rendered content (a silent freeze at
+  // the end) and desync the audio-master clock.
+  const totalFrames = allScenes.reduce((sum, s) => sum + (s.total_frame || 0), 0);
+  const transitionCount = allScenes.length - 1;
+  const transitionType = config.theme?.transition_type || "fade";
+  const transitionFrames = Math.round(config.theme?.transition_duration || 12);
+  const effectiveTransitionFrames =
+    transitionType !== "none" && transitionFrames > 0 ? transitionFrames : 0;
+  const targetTotal = totalFrames + transitionCount * effectiveTransitionFrames;
+  const audioScale = totalFrames > 0 ? targetTotal / totalFrames : 1;
+
+  let visualTotal = 0;
+  for (const scene of allScenes) {
+    visualTotal += Math.max(15, Math.round((scene.total_frame || 0) * audioScale));
+  }
+  visualTotal -= transitionCount * effectiveTransitionFrames;
+
+  return { durationInFrames: Math.max(1, visualTotal), props };
 };
 
 // ─── Default YAML config (enough to show something in Studio) ───────────
