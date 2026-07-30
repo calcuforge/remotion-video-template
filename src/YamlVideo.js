@@ -299,8 +299,16 @@ export const YamlVideo = ({ config }) => {
   const targetTotal = totalFrames + transitionCount * effectiveTransitionFrames;
   const audioScale = totalFrames > 0 ? targetTotal / totalFrames : 1;
 
-  // Collect subtitle list from config
-  const subtitleList = config.subtitle?.list || [];
+  // Collect subtitle list from config and map it into rendered frame space.
+  // Subtitles are authored in raw audio frames (the same space as scene.total_frame).
+  // The timeline is stretched by audioScale to accommodate transition overlaps, and
+  // the narration audio is placed at those same scaled offsets — so subtitles must
+  // be scaled identically, otherwise they drift progressively out of sync with the audio.
+  const subtitleList = (config.subtitle?.list || []).map((s) => ({
+    ...s,
+    start_frame: Math.round((s.start_frame || 0) * audioScale),
+    end_frame: Math.round((s.end_frame || 0) * audioScale),
+  }));
 
   return (
     <AbsoluteFill style={{ backgroundColor: themeProps.backgroundColor }}>
