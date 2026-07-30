@@ -271,13 +271,24 @@ export const YamlVideo = ({ config }) => {
   const { scenes, audioTracks } = flattenStories(config.stories || []);
   const transitionFrames = themeProps.transitionDuration;
 
-  // Build chapter list for the progress bar
-  const chapters = scenes.map((s, i) => ({
-    name: s.scene_id || `scene_${i}`,
-    label: s.story_name || s.remotion_component,
-    start_frame: scenes.slice(0, i).reduce((sum, sec) => sum + (sec.total_frame || 0), 0),
-    duration_frames: s.total_frame || 120,
-  }));
+  // Build chapter list for the progress bar — one segment per STORY
+  const chapters = [];
+  let chapterFrameCursor = 0;
+  for (const story of config.stories || []) {
+    let storyFrames = 0;
+    for (const section of story.section_list || []) {
+      for (const scene of section.scene_list || []) {
+        storyFrames += scene.total_frame || 0;
+      }
+    }
+    chapters.push({
+      name: story.story_id || `story_${chapters.length}`,
+      label: story.story_name || story.story_id || `Story ${chapters.length + 1}`,
+      start_frame: chapterFrameCursor,
+      duration_frames: storyFrames || 120,
+    });
+    chapterFrameCursor += storyFrames;
+  }
 
   const totalFrames = scenes.reduce((sum, s) => sum + (s.total_frame || 0), 0);
   const transitionCount = Math.max(0, scenes.length - 1);

@@ -129,22 +129,32 @@ const calculateVideoMetadata = async ({ props }) => {
 const calculateYamlMetadata = ({ props }) => {
   const config = props.config || {};
   let totalFrames = 300;
-  if (config.stories) {
-    totalFrames = 0;
-    for (const story of config.stories) {
-      if (story.section_list) {
-        for (const section of story.section_list) {
-          if (section.scene_list) {
-            for (const scene of section.scene_list) {
-              totalFrames += scene.total_frame || 120;
-            }
-          }
-        }
+
+  // Flatten all scenes to count total frames
+  const allScenes = [];
+  for (const story of config.stories || []) {
+    for (const section of story.section_list || []) {
+      for (const scene of section.scene_list || []) {
+        allScenes.push(scene);
       }
     }
   }
-  if (totalFrames === 0) totalFrames = 300;
-  return { durationInFrames: totalFrames, props };
+
+  if (allScenes.length > 0) {
+    totalFrames = 0;
+    for (const scene of allScenes) {
+      totalFrames += scene.total_frame || 120;
+    }
+    // Add transition frames (matching YamlVideo.js audioScale logic)
+    const transitionType = config.theme?.transition_type || "fade";
+    const transitionFrames = Math.round(config.theme?.transition_duration || 12);
+    const transitionCount = allScenes.length - 1;
+    if (transitionType !== "none" && transitionFrames > 0) {
+      totalFrames += transitionCount * transitionFrames;
+    }
+  }
+
+  return { durationInFrames: totalFrames || 300, props };
 };
 
 // ─── Default YAML config (enough to show something in Studio) ───────────
