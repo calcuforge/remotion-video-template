@@ -108,11 +108,13 @@ const yamlConfigSchema = z.object({
     story_name: z.string().optional(),
     story_id: z.string().optional(),
     section_list: z.array(z.object({
-      total_frame: z.number(),
-      remotion_component: z.string(),
-      remotion_data: z.any().optional(),
       audio: z.string().optional(),
-      scene_id: z.string().optional(),
+      scene_list: z.array(z.object({
+        total_frame: z.number(),
+        remotion_component: z.string(),
+        remotion_data: z.any().optional(),
+        scene_id: z.string().optional(),
+      })).optional(),
     })).optional(),
   })).optional(),
 });
@@ -132,7 +134,11 @@ const calculateYamlMetadata = ({ props }) => {
     for (const story of config.stories) {
       if (story.section_list) {
         for (const section of story.section_list) {
-          totalFrames += section.total_frame || 120;
+          if (section.scene_list) {
+            for (const scene of section.scene_list) {
+              totalFrames += scene.total_frame || 120;
+            }
+          }
         }
       }
     }
@@ -160,27 +166,32 @@ const defaultYamlConfig = {
       story_id: "story1",
       section_list: [
         {
-          total_frame: 120,
-          remotion_component: "QuoteBlock",
-          remotion_data: {
-            heading: "Welcome",
-            quote: "This is a sample section rendered from YAML config.",
-            attribution: "YamlVideo",
-          },
-          scene_id: "scene1",
-        },
-        {
-          total_frame: 120,
-          remotion_component: "FeatureGrid",
-          remotion_data: {
-            heading: "Features",
-            items: [
-              { icon: "zap", title: "Fast", description: "Quick rendering" },
-              { icon: "palette", title: "Customizable", description: "Full control" },
-              { icon: "code", title: "Code-driven", description: "React + YAML" },
-            ],
-          },
-          scene_id: "scene2",
+          audio: "",
+          scene_list: [
+            {
+              total_frame: 120,
+              remotion_component: "QuoteBlock",
+              remotion_data: {
+                heading: "Welcome",
+                quote: "This is a sample section rendered from YAML config.",
+                attribution: "YamlVideo",
+              },
+              scene_id: "scene1",
+            },
+            {
+              total_frame: 120,
+              remotion_component: "FeatureGrid",
+              remotion_data: {
+                heading: "Features",
+                items: [
+                  { icon: "zap", title: "Fast", description: "Quick rendering" },
+                  { icon: "palette", title: "Customizable", description: "Full control" },
+                  { icon: "code", title: "Code-driven", description: "React + YAML" },
+                ],
+              },
+              scene_id: "scene2",
+            },
+          ],
         },
       ],
     },

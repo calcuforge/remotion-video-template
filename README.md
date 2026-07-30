@@ -68,16 +68,27 @@ subtitle:
 stories:
   - story_name: "Chapter 1"
     story_id: story1
-    section_list:
-      - total_frame: 120
-        remotion_component: QuoteBlock
-        remotion_data:
-          heading: "Optional section title"
-          quote: "The quote text to display."
-          attribution: "Author Name"
-        audio: narration/chapter1.wav   # optional per-section audio
-        scene_id: scene1
+    section_list:              # each entry = one narration unit
+      - audio: narration/ch1.wav  # narration audio (shared by all scenes below)
+        scene_list:               # visual scenes under this narration
+          - total_frame: 60
+            remotion_component: AssetVideo
+            remotion_data:
+              src: assets/scene1.mp4
+              role: background
+            scene_id: scene1
+          - total_frame: 60
+            remotion_component: QuoteBlock
+            remotion_data:
+              heading: "Key Insight"
+              quote: "The quote text to display."
+              attribution: "Author Name"
+            scene_id: scene2
 ```
+
+Each `section_list` entry represents a **narration unit**: one `audio` file
+spanning multiple `scene_list` entries. The audio plays continuously across
+all scenes in its group.
 
 ### Rendering from a YAML config
 

@@ -10,7 +10,7 @@
  */
 
 import React from "react";
-import { Audio, AbsoluteFill, staticFile, useCurrentFrame } from "remotion";
+import { Audio, AbsoluteFill, Sequence, staticFile, useCurrentFrame } from "remotion";
 import { TransitionSeries, linearTiming } from "@remotion/transitions";
 
 import {
@@ -61,17 +61,45 @@ const COMPONENT_MAP = {
 // Helpers
 // ---------------------------------------------------------------------------
 
-/** Flatten all section_list entries across all stories into one array. */
-const flattenSections = (stories) => {
-  const result = [];
-  for (const story of stories) {
-    if (story.section_list) {
-      for (const section of story.section_list) {
-        result.push({ ...section, story_name: story.story_name, story_id: story.story_id });
+/**
+ * Flatten the nested structure into:
+ *  - scenes: flat array of all scene objects (for TransitionSeries visuals)
+ *  - audioTracks: narration-level audio with start frame (for overlay rendering)
+ *
+ * New YAML structure:
+ *   stories[].section_list[] = { audio, scene_list[]: { total_frame, remotion_component, ... } }
+ */
+const flattenStories = (stories) => {
+  const scenes = [];
+  const audioTracks = [];
+  let frameCursor = 0;
+
+  for (const story of stories || []) {
+    for (const section of story.section_list || []) {
+      const narrationStart = frameCursor;
+      const sceneList = section.scene_list || [];
+
+      for (const scene of sceneList) {
+        scenes.push({
+          ...scene,
+          story_name: story.story_name,
+          story_id: story.story_id,
+        });
+        frameCursor += scene.total_frame || 0;
+      }
+
+      // Narration-level audio spans all its scenes
+      if (section.audio) {
+        audioTracks.push({
+          src: section.audio,
+          startFrame: narrationStart,
+          durationFrames: frameCursor - narrationStart,
+        });
       }
     }
   }
-  return result;
+
+  return { scenes, audioTracks };
 };
 
 /** Build theme-derived props object compatible with existing components. */
@@ -240,19 +268,19 @@ export const YamlVideo = ({ config }) => {
   }
 
   const themeProps = buildThemeProps(config);
-  const sections = flattenSections(config.stories || []);
+  const { scenes, audioTracks } = flattenStories(config.stories || []);
   const transitionFrames = themeProps.transitionDuration;
 
   // Build chapter list for the progress bar
-  const chapters = sections.map((s, i) => ({
-    name: s.scene_id || `section_${i}`,
+  const chapters = scenes.map((s, i) => ({
+    name: s.scene_id || `scene_${i}`,
     label: s.story_name || s.remotion_component,
-    start_frame: sections.slice(0, i).reduce((sum, sec) => sum + (sec.total_frame || 0), 0),
+    start_frame: scenes.slice(0, i).reduce((sum, sec) => sum + (sec.total_frame || 0), 0),
     duration_frames: s.total_frame || 120,
   }));
 
-  const totalFrames = sections.reduce((sum, s) => sum + (s.total_frame || 0), 0);
-  const transitionCount = Math.max(0, sections.length - 1);
+  const totalFrames = scenes.reduce((sum, s) => sum + (s.total_frame || 0), 0);
+  const transitionCount = Math.max(0, scenes.length - 1);
   const effectiveTransitionFrames =
     themeProps.transitionType !== "none" && transitionFrames > 0 ? transitionFrames : 0;
 
@@ -266,19 +294,16 @@ export const YamlVideo = ({ config }) => {
   return (
     <AbsoluteFill style={{ backgroundColor: themeProps.backgroundColor }}>
       <Scale4K orientation={themeProps.orientation} scaleFactor={themeProps.scaleFactor}>
+        {/* Visual track: TransitionSeries of flat scenes */}
         <TransitionSeries>
-          {sections.map((section, i) => {
-            const duration = Math.max(15, Math.round((section.total_frame || 0) * audioScale));
+          {scenes.map((scene, i) => {
+            const duration = Math.max(15, Math.round((scene.total_frame || 0) * audioScale));
             return (
-              <React.Fragment key={section.scene_id || i}>
+              <React.Fragment key={scene.scene_id || i}>
                 <TransitionSeries.Sequence durationInFrames={duration}>
-                  <SectionRenderer section={section} themeProps={themeProps} frameOffset={0} />
-                  {/* Per-section narration audio */}
-                  {section.audio && (
-                    <Audio src={resolveAssetSrc(section.audio)} />
-                  )}
+                  <SectionRenderer section={scene} themeProps={themeProps} frameOffset={0} />
                 </TransitionSeries.Sequence>
-                {i < sections.length - 1 && transitionFrames > 0 && themeProps.transitionType !== "none" && (
+                {i < scenes.length - 1 && transitionFrames > 0 && themeProps.transitionType !== "none" && (
                   <TransitionSeries.Transition
                     presentation={getPresentation(themeProps.transitionType)}
                     timing={linearTiming({ durationInFrames: transitionFrames })}
@@ -288,6 +313,16 @@ export const YamlVideo = ({ config }) => {
             );
           })}
         </TransitionSeries>
+
+        {/* Audio track: narration-level audio overlaid at correct frame offsets */}
+        {audioTracks.map((track, i) => {
+          const scaledStart = Math.round(track.startFrame * audioScale);
+          return (
+            <Sequence key={`audio_${i}`} from={scaledStart} layout="none">
+              <Audio src={resolveAssetSrc(track.src)} />
+            </Sequence>
+          );
+        })}
       </Scale4K>
 
       {/* Progress bar at native resolution */}
