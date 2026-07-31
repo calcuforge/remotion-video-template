@@ -113,6 +113,80 @@ const SCHEMAS = {
   },
 };
 
+// ─── Short-label checks ───────────────────────────────────────────────────
+// Data/text components display *data points*, not narration. A common mistake
+// is feeding a full sentence into a label field (e.g. a StatCounter whose
+// label reads "最初的几轮搜索一无所获，黑匣子的信号也在"), which renders as a
+// number floating above a broken half-sentence. These specs name the fields
+// that MUST stay short; sentence punctuation there is an error, over-length a
+// warning. Fields that legitimately hold prose (descriptions, quotes, code
+// lines, diagram node labels) are intentionally NOT listed.
+const SENTENCE_PUNCT = /[，。；！？、,;!?]/;
+const SHORT_LABEL_SPECS = {
+  StatCounter: [
+    { path: "items[].label", max: 10 },
+    { path: "items[].suffix", max: 4 },
+  ],
+  DataBar: [
+    { path: "items[].label", max: 10 },
+  ],
+  IconCard: [
+    { path: "title", max: 14 },
+  ],
+  FeatureGrid: [
+    { path: "items[].title", max: 14 },
+  ],
+  Timeline: [
+    { path: "items[].label", max: 14 },
+  ],
+  FlowChart: [
+    { path: "steps[].label", max: 14 },
+  ],
+  DataTable: [
+    { path: "headers[]", max: 14, punctWarn: true },
+  ],
+};
+
+// Walk a dotted path that may contain one-level `[]` array wildcards, calling
+// cb(value) for each resolved leaf.
+function forEachField(node, path, cb) {
+  const parts = path.split(".");
+  const walk = (cur, i) => {
+    if (cur === undefined || cur === null) return;
+    if (i === parts.length) { cb(cur); return; }
+    const part = parts[i];
+    if (part.endsWith("[]")) {
+      const key = part.slice(0, -2);
+      const arr = cur[key];
+      if (Array.isArray(arr)) arr.forEach((el) => walk(el, i + 1));
+    } else {
+      if (typeof cur === "object") walk(cur[part], i + 1);
+    }
+  };
+  walk(node, 0);
+}
+
+function checkShortLabels(component, data, prefix, errors, warnings) {
+  const specs = SHORT_LABEL_SPECS[component];
+  if (!specs) return;
+  for (const spec of specs) {
+    forEachField(data, spec.path, (val) => {
+      if (typeof val !== "string" || val === "") return;
+      if (SENTENCE_PUNCT.test(val)) {
+        const msg = `${prefix}: [${component}] '${spec.path}' = "${val}" reads like narration ` +
+          `(contains sentence punctuation). Data fields hold short labels only — ` +
+          `put the full sentence in narration.content and use a ≤${spec.max}-char label here.`;
+        if (spec.punctWarn) warnings.push(msg); else errors.push(msg);
+      } else if (val.length > spec.max) {
+        warnings.push(
+          `${prefix}: [${component}] '${spec.path}' = "${val}" is ${val.length} chars ` +
+          `(>${spec.max}); keep labels/headers short so they don't wrap awkwardly.`,
+        );
+      }
+    });
+  }
+}
+
 // ─── Validation logic ─────────────────────────────────────────────────────
 
 function validateScene(component, data, sceneId, storyId) {
@@ -191,6 +265,9 @@ function validateScene(component, data, sceneId, storyId) {
       }
     }
   }
+
+  // Short-label / narration-leak checks (StatCounter, DataBar, cards, etc.)
+  checkShortLabels(component, data, prefix, errors, warnings);
 
   // Unknown field warnings
   const known = new Set([
