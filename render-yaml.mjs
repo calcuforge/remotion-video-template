@@ -26,12 +26,13 @@ import {
   writeFileSync,
   unlinkSync,
   existsSync,
+  mkdirSync,
   mkdtempSync,
   rmSync,
 } from "node:fs";
 import { resolve, dirname, basename, join } from "node:path";
 import { execSync } from "node:child_process";
-import { tmpdir, cpus } from "node:os";
+import { cpus } from "node:os";
 import { fileURLToPath } from "node:url";
 import { load } from "js-yaml";
 import { bundle } from "@remotion/bundler";
@@ -312,7 +313,11 @@ try {
     });
   } else {
     // Render segments in parallel (bounded worker pool), then concatenate.
-    segmentDir = mkdtempSync(join(tmpdir(), "remotion-segments-"));
+    // Create segment temp dir inside the video directory (not the system temp),
+    // so all intermediate files stay within the project directory.
+    const segTmpBase = join(dirname(outputAbsolute), "tmp");
+    mkdirSync(segTmpBase, { recursive: true });
+    segmentDir = mkdtempSync(join(segTmpBase, "remotion-segments-"));
     const segPaths = segments.map((_, i) =>
       join(segmentDir, `seg_${String(i).padStart(4, "0")}.mp4`),
     );
