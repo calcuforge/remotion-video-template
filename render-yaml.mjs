@@ -32,17 +32,19 @@ import {
 } from "node:fs";
 import { resolve, dirname, basename, join } from "node:path";
 import { execSync } from "node:child_process";
-import { cpus } from "node:os";
+import { cpus, totalmem } from "node:os";
 import { fileURLToPath } from "node:url";
 import { load } from "js-yaml";
 import { bundle } from "@remotion/bundler";
 import { renderMedia, selectComposition } from "@remotion/renderer";
 
-// ─── Container / CPU detection ───────────────────────────────────────────
-// Inside a container, os.cpus() reports the HOST's core count, not the CPU
-// limit the container is actually given. Read the real limit from cgroup v2
-// (cpu.max) — falling back to cgroup v1 (cpu.cfs_quota_us) — so we size the
-// render parallelism to the CPUs we actually have and don't over-subscribe.
+// ─── Container / CPU / memory detection ──────────────────────────────────
+// Inside a container, os.cpus() and os.totalmem() report the HOST's resources,
+// not the limits the container is given. Read the real limits from cgroup v2
+// (cpu.max, memory.max) — falling back to cgroup v1 — so we size the render
+// parallelism to the resources we actually have and don't over-subscribe.
+// On non-Linux (macOS, Windows) or bare-metal Linux, os.cpus() / os.totalmem()
+// are accurate.
 
 /** Best-effort detection of running inside a container. */
 function isContainer() {
@@ -95,6 +97,40 @@ function getCgroupCpuCount() {
   return null;
 }
 
+/**
+ * Return the memory limit in bytes from cgroup, or null if unlimited /
+ * unavailable. Prefers cgroup v2 (memory.max), falls back to v1
+ * (memory.limit_in_bytes).
+ */
+function getCgroupMemoryBytes() {
+  // cgroup v2: /sys/fs/cgroup/memory.max → bytes or "max" (unlimited)
+  try {
+    const v2 = "/sys/fs/cgroup/memory.max";
+    if (existsSync(v2)) {
+      const raw = readFileSync(v2, "utf-8").trim();
+      if (raw !== "max") {
+        const bytes = parseInt(raw, 10);
+        if (bytes > 0) return bytes;
+      }
+      return null; // v2 present but unlimited
+    }
+  } catch {
+    /* ignore */
+  }
+  // cgroup v1: memory.limit_in_bytes (a huge value ≈ 2^63 means unlimited)
+  try {
+    const v1 = "/sys/fs/cgroup/memory/memory.limit_in_bytes";
+    if (existsSync(v1)) {
+      const bytes = parseInt(readFileSync(v1, "utf-8").trim(), 10);
+      // Values >= 2^62 are effectively "no limit"
+      if (bytes > 0 && bytes < 2 ** 62) return bytes;
+    }
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
+
 const hostCpuCount = cpus().length;
 const cgroupCpuCount = getCgroupCpuCount();
 const inContainer = isContainer();
@@ -103,6 +139,27 @@ const effectiveCpuCount =
   cgroupCpuCount != null && cgroupCpuCount > 0 && cgroupCpuCount < hostCpuCount
     ? cgroupCpuCount
     : hostCpuCount;
+
+// Effective memory: cgroup limit when binding, otherwise os.totalmem().
+const hostMemBytes = totalmem();
+const cgroupMemBytes = getCgroupMemoryBytes();
+const effectiveMemBytes =
+  cgroupMemBytes != null && cgroupMemBytes < hostMemBytes
+    ? cgroupMemBytes
+    : hostMemBytes;
+const effectiveMemMB = Math.round(effectiveMemBytes / (1024 * 1024));
+
+// ─── Resource-based auto-sizing ──────────────────────────────────────────
+// Each Remotion render spawns a headless Chrome instance that uses ~1 GB RAM
+// (1080p) or ~2 GB (4K). Reserve 512 MB for the OS + Node.js + ffmpeg.
+const RESERVE_MB = 512;
+const MEM_PER_RENDER_MB = 1024; // conservative per-Chrome-instance estimate
+
+const maxByCpu = effectiveCpuCount;
+const maxByMem = Math.max(1, Math.floor(
+  (effectiveMemMB - RESERVE_MB) / MEM_PER_RENDER_MB,
+));
+const maxConcurrent = Math.max(1, Math.min(maxByCpu, maxByMem));
 
 // ─── CLI argument parsing ────────────────────────────────────────────────
 const args = process.argv.slice(2);
@@ -153,33 +210,24 @@ for (let i = 1; i < args.length; i++) {
   }
 }
 
-// Auto-size segment_workers from the effective CPU count when not given
-// explicitly. In a container this uses the cgroup limit; elsewhere the host
-// core count. Per-render concurrency is derived later so total parallelism
-// stays ≈ effectiveCpuCount (container-safe).
+// Auto-size segment_workers and per-render concurrency from both CPU and
+// memory. Total parallelism (workers × concurrency) stays ≤ maxConcurrent,
+// which is the lower of the CPU budget and the memory budget.
 if (segmentWorkers == null) {
-  if (inContainer || cgroupCpuCount != null) {
-    // ~1 worker per 4 CPUs, capped to 1-4.
-    segmentWorkers = Math.max(1, Math.min(Math.floor(effectiveCpuCount / 4), 4));
-  } else {
-    segmentWorkers = 2;
-  }
+  // Prefer 1 worker when constrained; up to 4 on large machines.
+  segmentWorkers = Math.max(1, Math.min(Math.floor(maxConcurrent / 4), 4));
 }
 
-// Per-render concurrency: when constrained by a cgroup limit, set it so that
-// segment_workers × concurrency ≈ effectiveCpuCount (avoids over-subscribing
-// the container, whose true limit os.cpus() does not reflect). Outside a
-// constrained environment this stays null → Remotion's own default.
-let renderConcurrency = null;
-if (cgroupCpuCount != null && cgroupCpuCount > 0 && cgroupCpuCount < hostCpuCount) {
-  renderConcurrency = Math.max(1, Math.ceil(effectiveCpuCount / segmentWorkers));
-}
+// Per-render concurrency: split the remaining budget across workers.
+// Always set explicitly (not null) so we never over-subscribe memory.
+let renderConcurrency = Math.max(1, Math.ceil(maxConcurrent / segmentWorkers));
 
 console.log(
-  `CPU detection: container=${inContainer ? "yes" : "no"}, ` +
-    `host=${hostCpuCount}, cgroup=${cgroupCpuCount ?? "n/a"}, ` +
-    `effective=${effectiveCpuCount} → segment_workers=${segmentWorkers}` +
-    (renderConcurrency != null ? `, per-render concurrency=${renderConcurrency}` : " (Remotion default concurrency)"),
+  `Resource detection: container=${inContainer ? "yes" : "no"}, ` +
+    `cpu: host=${hostCpuCount} cgroup=${cgroupCpuCount ?? "n/a"} effective=${effectiveCpuCount}, ` +
+    `mem: host=${Math.round(hostMemBytes / 1024 / 1024)}MB cgroup=${cgroupMemBytes != null ? Math.round(cgroupMemBytes / 1024 / 1024) + "MB" : "n/a"} effective=${effectiveMemMB}MB, ` +
+    `maxConcurrent=${maxConcurrent} (cpu=${maxByCpu}, mem=${maxByMem}) → ` +
+    `segment_workers=${segmentWorkers}, per-render concurrency=${renderConcurrency}`,
 );
 
 // ─── Read & parse YAML ───────────────────────────────────────────────────
@@ -300,7 +348,7 @@ try {
 
   // Only pass concurrency when we computed a container-aware value; otherwise
   // omit it so Remotion uses its own default.
-  const concurrencyOpt = renderConcurrency != null ? { concurrency: renderConcurrency } : {};
+  const concurrencyOpt = { concurrency: renderConcurrency };
 
   if (segments.length <= 1) {
     // Short video — single render, no segmentation overhead.
