@@ -17,7 +17,7 @@
  *   QuoteBlock, FeatureGrid, IconCard, ComparisonCard,
  *   StatCounter, DataBar, Timeline, FlowChart,
  *   CodeBlock, DataTable, DiagramReveal, AnimationDemo,
- *   AssetImage, AssetVideo
+ *   AssetImage, AssetVideo, KenBurnsImage
  *
  * Subtitles (renders SRT directly, no FFmpeg):
  *   Subtitles
@@ -80,3 +80,4 @@ export { TransitionSeries, linearTiming } from "@remotion/transitions";
 export { useAssets, getAsset, getSectionAssets, assetSrc } from "./useAssets.js";
 export { AssetImage } from "./AssetImage.js";
 export { AssetVideo } from "./AssetVideo.js";
+export { KenBurnsImage } from "./KenBurnsImage.js";

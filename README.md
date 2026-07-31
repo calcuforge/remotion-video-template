@@ -328,6 +328,32 @@ remotion_data:
 For manifest-based lookup, use `id` instead of `src` (resolves through
 `public/assets/manifest.json`).
 
+#### KenBurnsImage — static image with cinematic zoom + pan
+
+```yaml
+remotion_component: KenBurnsImage
+remotion_data:
+  src: assets/photo.jpg      # path relative to public dir, or absolute
+  role: background            # "background" (full-bleed) or "inline" (default)
+  zoom: in                   # "in" (default) | "out" | "none"
+  pan: left                  # "none" (default) | "left" | "right" | "up" | "down"
+                             #   | "up-left" | "up-right" | "down-left" | "down-right"
+  caption: "Photo caption"   # optional, inline mode only
+  dim: 0.35                  # overlay darkness 0-1, background only (default 0.35)
+  totalFrame: 120            # scene duration in frames — drives the zoom/pan speed
+```
+
+Applies a Ken Burns effect (slow zoom and/or pan) to a static image, adding cinematic
+motion without the cost of video generation. Use when you want more visual engagement
+than a static `AssetImage` but don't need a full `AssetVideo`.
+
+- **zoom**: `in` zooms from 1.0× to 1.15×; `out` reverses it (1.15× → 1.0×).
+  Diagonal pans (e.g., `up-left`) combine both axes.
+- **totalFrame**: the scene's frame count; the zoom/pan interpolates over this
+  entire duration so the motion is evenly paced. The pipeline auto-populates it.
+- **dim**: controls the dark gradient overlay in background mode, leaving text
+  readable on top of the image. Default 0.35.
+
 #### AssetVideo — full-screen or inline video
 
 ```yaml
@@ -382,7 +408,7 @@ remotion-video-template/
 │       ├── DataTable.js
 │       ├── DiagramReveal.js
 │       ├── AnimationDemo.js
-│       ├── AssetImage.js / AssetVideo.js
+│       ├── AssetImage.js / AssetVideo.js / KenBurnsImage.js
 │       ├── ErrorBoundary.js
 │       ├── useTiming.js       # loads timing.json via staticFile
 │       └── useAssets.js       # loads assets/manifest.json
@@ -412,7 +438,7 @@ Import from `./components` (or `./components/index.js`):
 **Content components** — `QuoteBlock`, `FeatureGrid`, `IconCard`,
 `ComparisonCard`, `StatCounter`, `DataBar`, `Timeline`, `FlowChart`,
 `CodeBlock`, `DataTable`, `DiagramReveal`, `AnimationDemo`, `AssetImage`,
-`AssetVideo`
+`AssetVideo`, `KenBurnsImage`
 
 **Infrastructure** — `ChapterProgressBar`, `Subtitles`, `Icon`,
 `ErrorBoundary`, `useTiming`, `useAssets`, `getAsset`, `getSectionAssets`,

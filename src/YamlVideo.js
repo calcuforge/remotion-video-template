@@ -35,6 +35,7 @@ import {
   AnimationDemo,
   AssetImage,
   AssetVideo,
+  KenBurnsImage,
 } from "./components/index.js";
 
 // ---------------------------------------------------------------------------
@@ -55,6 +56,7 @@ const COMPONENT_MAP = {
   AnimationDemo,
   AssetImage,
   AssetVideo,
+  KenBurnsImage,
 };
 
 // ---------------------------------------------------------------------------
@@ -178,13 +180,12 @@ const SectionRenderer = ({ section, themeProps, frameOffset }) => {
   }
 
   // AssetImage / AssetVideo with background role render full-bleed
-  const isBackgroundAsset =
-    (componentName === "AssetImage" || componentName === "AssetVideo") &&
-    data.role === "background";
+  const ASSET_COMPONENTS = ["AssetImage", "AssetVideo", "KenBurnsImage"];
+  const isBackgroundAsset = ASSET_COMPONENTS.includes(componentName) && data.role === "background";
 
   // Resolve src for asset components
   let resolvedData = { ...data };
-  if (componentName === "AssetImage" || componentName === "AssetVideo") {
+  if (ASSET_COMPONENTS.includes(componentName)) {
     if (data.src) {
       resolvedData.src = resolveAssetSrc(data.src);
     }
