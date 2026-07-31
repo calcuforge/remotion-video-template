@@ -271,6 +271,7 @@ if (studioMode) {
 
 // ─── Render (segmented + parallel + ffmpeg concat) ───────────────────────
 let segmentDir = null;
+let bundleDir = null;
 try {
   console.log(`\nRendering composition "${compositionId}"...`);
   console.log(`Output: ${outputAbsolute}`);
@@ -283,6 +284,7 @@ try {
     publicDir: publicAbsolute,
     webpackOverride: (cfg) => cfg,
   });
+  bundleDir = serveUrl; // bundle() returns the output dir path — clean up in finally
 
   // Resolve the composition (runs calculateMetadata → real durationInFrames).
   const composition = await selectComposition({ serveUrl, id: compositionId, inputProps });
@@ -369,5 +371,10 @@ try {
 } finally {
   if (segmentDir && existsSync(segmentDir)) {
     rmSync(segmentDir, { recursive: true, force: true });
+  }
+  // Remotion's bundle() does NOT clean up its webpack output dir — do it here
+  // to prevent remotion-webpack-bundle-* dirs from accumulating in the system temp.
+  if (bundleDir && existsSync(bundleDir)) {
+    rmSync(bundleDir, { recursive: true, force: true });
   }
 }
