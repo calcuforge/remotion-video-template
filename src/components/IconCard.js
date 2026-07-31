@@ -42,7 +42,7 @@ export const IconCard = ({
         </div>
         <div style={{
           fontSize: v ? 26 : 24, color: props.textColor, marginTop: 8,
-          lineHeight: 1.5, opacity: 0.75,
+          lineHeight: 1.5, opacity: 0.9,
         }}>
           {description}
         </div>

@@ -103,7 +103,7 @@ export const Timeline = ({
             </div>
             <div style={{ paddingBottom: i < items.length - 1 ? 32 : 0, flex: 1 }}>
               <div style={{ fontSize: 34, fontWeight: 700, color: props.primaryColor }}>{item.label}</div>
-              <div style={{ fontSize: 26, color: props.textColor, marginTop: 6, lineHeight: 1.5, opacity: 0.75 }}>
+              <div style={{ fontSize: 26, color: props.textColor, marginTop: 6, lineHeight: 1.5, opacity: 0.9 }}>
                 {item.description}
               </div>
             </div>

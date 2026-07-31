@@ -246,11 +246,12 @@ const InlineSubtitles = ({ subtitles, fontSize = 40 }) => {
         <span key={i} style={{
           fontSize,
           color: "#fff",
-          background: "rgba(0,0,0,0.65)",
+          background: "rgba(0,0,0,0.75)",
           padding: "8px 24px",
           borderRadius: 8,
           textAlign: "center",
           maxWidth: "85%",
+          textShadow: "0 1px 3px rgba(0,0,0,0.6)",
         }}>
           {s.text}
         </span>

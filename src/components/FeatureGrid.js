@@ -33,7 +33,7 @@ const FeatureCard = ({ props, item, index, delay }) => {
         <div style={{ fontSize: v ? 42 : 40, fontWeight: 700, color: props.primaryColor, marginBottom: 8 }}>
           {item.title}
         </div>
-        <div style={{ fontSize: v ? 34 : 32, color: props.textColor, lineHeight: 1.5, opacity: 0.75 }}>
+        <div style={{ fontSize: v ? 34 : 32, color: props.textColor, lineHeight: 1.5, opacity: 0.9 }}>
           {item.description}
         </div>
       </div>

@@ -61,7 +61,7 @@ const FlowStep = ({ index, step, props, delay, vertical, iconAnim, gapSize, isLa
         {step.description && (
           <div style={{
             fontSize: vertical ? 34 : 32, color: props.textColor, marginTop: 8,
-            opacity: 0.65, lineHeight: 1.4,
+            opacity: 0.9, lineHeight: 1.4,
           }}>
             {step.description}
           </div>

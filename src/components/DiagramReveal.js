@@ -23,6 +23,28 @@ import { useEntrance, useDrawOn, staggerDelay } from "./animations.js";
  * Direction: "vertical" (top→bottom, default) or "horizontal" (left→right).
  */
 
+// Node label font size (must match the <text> in AnimatedNode).
+const LABEL_FONT_SIZE = 20;
+
+/**
+ * Estimate the rendered width of a node label. CJK glyphs are roughly as wide
+ * as the font size, while Latin letters average ~0.55× — using a single
+ * multiplier for both underestimates CJK labels and lets text overflow the
+ * node box, so measure them separately.
+ */
+const estimateLabelWidth = (label, fontSize = LABEL_FONT_SIZE) => {
+  let w = 0;
+  for (const ch of String(label || "")) {
+    // CJK Unified Ideographs, extensions, fullwidth punctuation, kana, Hangul
+    const isCjk = /[㐀-䶿一-鿿豈-﫿＀-￯぀-ヿ가-힯]/.test(ch);
+    w += isCjk ? fontSize : fontSize * 0.55;
+  }
+  return Math.ceil(w);
+};
+
+const getNodeWidthDefault = (label) =>
+  Math.max(120, estimateLabelWidth(label) + 40);
+
 const autoLayout = (nodes, edges, viewWidth, viewHeight, direction) => {
   const children = new Map();
   const parents = new Map();
@@ -66,7 +88,7 @@ const autoLayout = (nodes, edges, viewWidth, viewHeight, direction) => {
     layers[layerMap.get(n.id) ?? 0].push(n);
   }
 
-  const getNodeWidth = (n) => n.width ?? Math.max(120, n.label.length * 16 + 40);
+  const getNodeWidth = (n) => n.width ?? getNodeWidthDefault(n.label);
   const getNodeHeight = (n) => n.height ?? 56;
 
   const padX = 60;
@@ -228,7 +250,7 @@ const AnimatedNode = ({ node, color, textColor, bgColor, enabled, delay }) => {
       <path d={rectPath} fill="none" stroke={color} strokeWidth={2} strokeOpacity={0.3}
         strokeDasharray={draw.strokeDasharray} strokeDashoffset={draw.strokeDashoffset} />
       <text x={node.x} y={node.y + 6} textAnchor="middle" fill={textColor}
-        fontSize={20} fontWeight={600} opacity={Math.min(1, draw.progress * 2)}>
+        fontSize={LABEL_FONT_SIZE} fontWeight={600} opacity={Math.min(1, draw.progress * 2)}>
         {node.label}
       </text>
     </>
@@ -252,7 +274,7 @@ export const DiagramReveal = ({
         ...n,
         x: n.x,
         y: n.y,
-        width: n.width ?? Math.max(120, n.label.length * 16 + 40),
+        width: n.width ?? getNodeWidthDefault(n.label),
         height: n.height ?? 56,
         layer: 0,
       }));

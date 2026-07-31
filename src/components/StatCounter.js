@@ -36,7 +36,7 @@ const StatCard = ({ props, item, index, delay }) => {
       </div>
       <div style={{
         fontSize: v ? 26 : 24, fontWeight: 500, color: props.textColor,
-        marginTop: 8, opacity: 0.65,
+        marginTop: 8, opacity: 0.85,
       }}>
         {item.label}
       </div>
