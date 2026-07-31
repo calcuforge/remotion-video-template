@@ -235,6 +235,9 @@ const InlineSubtitles = ({ subtitles, fontSize = 40 }) => {
     (s) => frame >= s.start_frame && frame <= s.end_frame
   );
   if (active.length === 0) return null;
+  // Defensive: if two subtitles overlap (e.g. a hand-authored config), show
+  // only the most recent one — never stack a lingering previous subtitle.
+  const current = active.reduce((a, b) => (b.start_frame > a.start_frame ? b : a));
 
   return (
     <div style={{
@@ -242,20 +245,18 @@ const InlineSubtitles = ({ subtitles, fontSize = 40 }) => {
       display: "flex", flexDirection: "column", alignItems: "center",
       gap: 8, pointerEvents: "none", zIndex: 100,
     }}>
-      {active.map((s, i) => (
-        <span key={i} style={{
-          fontSize,
-          color: "#fff",
-          background: "rgba(0,0,0,0.75)",
-          padding: "8px 24px",
-          borderRadius: 8,
-          textAlign: "center",
-          maxWidth: "85%",
-          textShadow: "0 1px 3px rgba(0,0,0,0.6)",
-        }}>
-          {s.text}
-        </span>
-      ))}
+      <span style={{
+        fontSize,
+        color: "#fff",
+        background: "rgba(0,0,0,0.75)",
+        padding: "8px 24px",
+        borderRadius: 8,
+        textAlign: "center",
+        maxWidth: "85%",
+        textShadow: "0 1px 3px rgba(0,0,0,0.6)",
+      }}>
+        {current.text}
+      </span>
     </div>
   );
 };
@@ -317,6 +318,17 @@ export const YamlVideo = ({ config }) => {
     start_frame: Math.max(0, Math.round((s.start_frame || 0) * audioScale) - i * effectiveTransitionFrames),
     end_frame: Math.max(0, Math.round((s.end_frame || 0) * audioScale) - i * effectiveTransitionFrames),
   }));
+  // The per-index transition shift moves each subtitle earlier by a different
+  // amount, which makes consecutive subtitles overlap by ~transitionFrames.
+  // Overlap would render two subtitles at once (the previous one lingering
+  // above the current). Clamp each subtitle's end to just before the next
+  // subtitle's start so exactly one subtitle is ever active.
+  for (let i = 0; i < subtitleList.length - 1; i++) {
+    const nextStart = subtitleList[i + 1].start_frame;
+    if (subtitleList[i].end_frame >= nextStart) {
+      subtitleList[i].end_frame = Math.max(subtitleList[i].start_frame, nextStart - 1);
+    }
+  }
 
   return (
     <AbsoluteFill style={{ backgroundColor: themeProps.backgroundColor }}>
