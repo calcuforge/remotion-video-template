@@ -476,6 +476,16 @@ npx remotion render src/index.js MainVideoVertical public/output_vertical.mp4 --
 Use `--public-dir` to point at a different asset folder per video so each
 video keeps its own audio, assets, and config self-contained.
 
+## Validating remotion_data
+
+```bash
+node validate-remotion-data.mjs path/to/remotion_sections.yaml
+```
+
+Checks each scene's `remotion_data` against the component's expected field
+schema: required fields, array item schemas, enum values, and unknown fields.
+Outputs a JSON envelope with `errors` / `warnings`. Exit 0 = valid, 1 = errors.
+
 ## Use cases
 
 - **Explainer** — QuoteBlock → FeatureGrid → StatCounter → ComparisonCard →
