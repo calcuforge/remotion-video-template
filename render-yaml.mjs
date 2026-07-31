@@ -31,11 +31,77 @@ import {
 } from "node:fs";
 import { resolve, dirname, basename, join } from "node:path";
 import { execSync } from "node:child_process";
-import { tmpdir } from "node:os";
+import { tmpdir, cpus } from "node:os";
 import { fileURLToPath } from "node:url";
 import { load } from "js-yaml";
 import { bundle } from "@remotion/bundler";
 import { renderMedia, selectComposition } from "@remotion/renderer";
+
+// ─── Container / CPU detection ───────────────────────────────────────────
+// Inside a container, os.cpus() reports the HOST's core count, not the CPU
+// limit the container is actually given. Read the real limit from cgroup v2
+// (cpu.max) — falling back to cgroup v1 (cpu.cfs_quota_us) — so we size the
+// render parallelism to the CPUs we actually have and don't over-subscribe.
+
+/** Best-effort detection of running inside a container. */
+function isContainer() {
+  try {
+    if (existsSync("/.dockerenv")) return true;
+    if (existsSync("/run/.containerenv")) return true;
+    if (existsSync("/proc/1/cgroup")) {
+      const cg = readFileSync("/proc/1/cgroup", "utf-8");
+      if (/docker|kubepods|containerd|lxc|podman|ecs|mesos/i.test(cg)) return true;
+    }
+    if (process.env.container) return true;
+  } catch {
+    /* ignore */
+  }
+  return false;
+}
+
+/**
+ * Return the CPU count granted by the cgroup limit, or null if there is no
+ * limit (or cgroups are unavailable, e.g. on Windows/macOS). Prefers cgroup v2.
+ */
+function getCgroupCpuCount() {
+  // cgroup v2: /sys/fs/cgroup/cpu.max → "<quota> <period>" or "max <period>"
+  try {
+    const v2 = "/sys/fs/cgroup/cpu.max";
+    if (existsSync(v2)) {
+      const parts = readFileSync(v2, "utf-8").trim().split(/\s+/);
+      if (parts[0] !== "max") {
+        const quota = parseInt(parts[0], 10);
+        const period = parseInt(parts[1], 10) || 100000;
+        if (quota > 0) return Math.max(1, Math.round(quota / period));
+      }
+      return null; // v2 present but unlimited
+    }
+  } catch {
+    /* ignore */
+  }
+  // cgroup v1 fallback: cpu.cfs_quota_us / cpu.cfs_period_us (-1 = unlimited)
+  try {
+    const quotaPath = "/sys/fs/cgroup/cpu/cpu.cfs_quota_us";
+    const periodPath = "/sys/fs/cgroup/cpu/cpu.cfs_period_us";
+    if (existsSync(quotaPath) && existsSync(periodPath)) {
+      const quota = parseInt(readFileSync(quotaPath, "utf-8").trim(), 10);
+      const period = parseInt(readFileSync(periodPath, "utf-8").trim(), 10) || 100000;
+      if (quota > 0) return Math.max(1, Math.round(quota / period));
+    }
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
+
+const hostCpuCount = cpus().length;
+const cgroupCpuCount = getCgroupCpuCount();
+const inContainer = isContainer();
+// Effective CPUs: the cgroup limit when it is binding, otherwise the host count.
+const effectiveCpuCount =
+  cgroupCpuCount != null && cgroupCpuCount > 0 && cgroupCpuCount < hostCpuCount
+    ? cgroupCpuCount
+    : hostCpuCount;
 
 // ─── CLI argument parsing ────────────────────────────────────────────────
 const args = process.argv.slice(2);
@@ -48,8 +114,10 @@ Options:
   --segment-frames <n>     Frames per render segment (default: 600). The video is
                            split into segments of this size, rendered in parallel,
                            then concatenated. Videos ≤ one segment render in one pass.
-  --segment-workers <n>    Max segments rendered concurrently (default: 2). Each
-                           segment uses Remotion's default per-render concurrency.
+  --segment-workers <n>    Max segments rendered concurrently. Default: auto-sized
+                           from the CPU count (in a container, the cgroup v2 CPU
+                           limit is used so rendering stays within the container's
+                           quota; elsewhere the host core count, default 2).
   --studio                 Open in Remotion Studio instead of rendering
   --help, -h               Show this help
 
@@ -68,7 +136,7 @@ let publicDir = "public";
 let outputPath = "public/output_yaml.mp4";
 let studioMode = false;
 let segmentFrames = 600;
-let segmentWorkers = 2;
+let segmentWorkers = null; // null → auto-sized from effectiveCpuCount below
 
 for (let i = 1; i < args.length; i++) {
   if (args[i] === "--public-dir" && i + 1 < args.length) {
@@ -78,11 +146,40 @@ for (let i = 1; i < args.length; i++) {
   } else if (args[i] === "--segment-frames" && i + 1 < args.length) {
     segmentFrames = Math.max(1, parseInt(args[++i], 10) || 600);
   } else if (args[i] === "--segment-workers" && i + 1 < args.length) {
-    segmentWorkers = Math.max(1, parseInt(args[++i], 10) || 2);
+    segmentWorkers = Math.max(1, parseInt(args[++i], 10) || 1);
   } else if (args[i] === "--studio") {
     studioMode = true;
   }
 }
+
+// Auto-size segment_workers from the effective CPU count when not given
+// explicitly. In a container this uses the cgroup limit; elsewhere the host
+// core count. Per-render concurrency is derived later so total parallelism
+// stays ≈ effectiveCpuCount (container-safe).
+if (segmentWorkers == null) {
+  if (inContainer || cgroupCpuCount != null) {
+    // ~1 worker per 4 CPUs, capped to 1-4.
+    segmentWorkers = Math.max(1, Math.min(Math.floor(effectiveCpuCount / 4), 4));
+  } else {
+    segmentWorkers = 2;
+  }
+}
+
+// Per-render concurrency: when constrained by a cgroup limit, set it so that
+// segment_workers × concurrency ≈ effectiveCpuCount (avoids over-subscribing
+// the container, whose true limit os.cpus() does not reflect). Outside a
+// constrained environment this stays null → Remotion's own default.
+let renderConcurrency = null;
+if (cgroupCpuCount != null && cgroupCpuCount > 0 && cgroupCpuCount < hostCpuCount) {
+  renderConcurrency = Math.max(1, Math.ceil(effectiveCpuCount / segmentWorkers));
+}
+
+console.log(
+  `CPU detection: container=${inContainer ? "yes" : "no"}, ` +
+    `host=${hostCpuCount}, cgroup=${cgroupCpuCount ?? "n/a"}, ` +
+    `effective=${effectiveCpuCount} → segment_workers=${segmentWorkers}` +
+    (renderConcurrency != null ? `, per-render concurrency=${renderConcurrency}` : " (Remotion default concurrency)"),
+);
 
 // ─── Read & parse YAML ───────────────────────────────────────────────────
 console.log(`Reading YAML config: ${yamlPath}`);
@@ -198,6 +295,10 @@ try {
     segments.push([start, Math.min(start + segmentFrames - 1, totalFrames - 1)]);
   }
 
+  // Only pass concurrency when we computed a container-aware value; otherwise
+  // omit it so Remotion uses its own default.
+  const concurrencyOpt = renderConcurrency != null ? { concurrency: renderConcurrency } : {};
+
   if (segments.length <= 1) {
     // Short video — single render, no segmentation overhead.
     console.log("Rendering in a single pass...");
@@ -207,6 +308,7 @@ try {
       codec: "h264",
       outputLocation: outputAbsolute,
       inputProps,
+      ...concurrencyOpt,
     });
   } else {
     // Render segments in parallel (bounded worker pool), then concatenate.
@@ -233,6 +335,7 @@ try {
           frameRange: [start, end],
           outputLocation: segPaths[i],
           inputProps,
+          ...concurrencyOpt,
         });
         done += 1;
         console.log(`  segment ${done}/${segments.length} done (frames ${start}-${end})`);
