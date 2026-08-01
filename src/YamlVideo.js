@@ -97,6 +97,7 @@ const flattenStories = (stories) => {
       if (section.audio) {
         audioTracks.push({
           src: section.audio,
+          volume: section.volume,
           startFrame: narrationStart,
           durationFrames: frameCursor - narrationStart,
           firstSceneIndex,
@@ -362,7 +363,7 @@ export const YamlVideo = ({ config }) => {
           );
           return (
             <Sequence key={`audio_${i}`} from={scaledStart} layout="none">
-              <Audio src={resolveAssetSrc(track.src)} />
+              <Audio src={resolveAssetSrc(track.src)} volume={track.volume ?? 1.0} />
             </Sequence>
           );
         })}
