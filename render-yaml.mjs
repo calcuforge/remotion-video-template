@@ -485,7 +485,7 @@ try {
       "utf-8",
     );
     execSync(
-      `ffmpeg -y -f concat -safe 0 -i "${listFile}" -c copy "${outputAbsolute}"`,
+      `ffmpeg -y -f concat -safe 0 -i "${listFile}" -c copy -movflags +faststart "${outputAbsolute}"`,
       { stdio: "inherit" },
     );
     // Concatenation succeeded — cached segments are no longer needed.
