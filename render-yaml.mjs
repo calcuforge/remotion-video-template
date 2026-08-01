@@ -331,6 +331,12 @@ const entryPoint = join(projectRoot, "src", "index.js");
 const inputProps = { config };
 const fps = config.fps || 24;
 
+// Codec + CRF from the YAML config (defaults: h264 / 23). CRF is only applied
+// to codecs that support it; prores uses proResProfile instead.
+const codec = (config.codec || "h264").toLowerCase();
+const supportsCrf = ["h264", "h265", "hevc", "vp8", "vp9", "av1"].includes(codec);
+const crfOpt = supportsCrf ? { crf: config.crf != null ? config.crf : 23 } : {};
+
 // ─── Studio mode ─────────────────────────────────────────────────────────
 if (studioMode) {
   const propsPath = join(dirname(yamlPath), ".remotion_props_temp.json");
@@ -387,10 +393,11 @@ try {
     await renderMedia({
       serveUrl,
       composition,
-      codec: "h264",
+      codec,
       outputLocation: outputAbsolute,
       inputProps,
       ...concurrencyOpt,
+      ...crfOpt,
     });
   } else {
     // Render segments in parallel (bounded worker pool), then concatenate.
@@ -417,11 +424,12 @@ try {
         await renderMedia({
           serveUrl,
           composition,
-          codec: "h264",
+          codec,
           frameRange: [start, end],
           outputLocation: segPaths[i],
           inputProps,
           ...concurrencyOpt,
+          ...crfOpt,
         });
         done += 1;
         console.log(`  segment ${done}/${segments.length} done (frames ${start}-${end})`);
