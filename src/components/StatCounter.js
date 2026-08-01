@@ -1,0 +1,63 @@
+import { useEntrance, useCounter } from "./animations.js";
+import { Icon } from "./Icon.js";
+
+/**
+ * StatCounter — row of animated number counters with optional icon.
+ * Each item: { value: number, suffix?: string, label: string, icon?: string }.
+ *
+ * Keep `items.length` constant per section so hook order stays stable.
+ */
+const StatCard = ({ props, item, index, delay }) => {
+  const v = props.orientation === "vertical";
+  const a = useEntrance(props.enableAnimations, delay + index * 8, "bouncy");
+  const count = useCounter(item.value, delay + index * 8 + 5);
+  const iconAnim = props.iconAnimation === "none" ? "none" : "entrance";
+
+  return (
+    <div style={{
+      flex: v ? undefined : 1, textAlign: "center",
+      padding: v ? "28px 36px" : "36px 24px",
+      background: `linear-gradient(135deg, ${props.primaryColor}06, ${props.primaryColor}10)`,
+      borderRadius: 24,
+      boxShadow: `0 4px 16px ${props.primaryColor}10, 0 8px 32px rgba(0,0,0,0.04)`,
+      border: `1px solid ${props.primaryColor}12`,
+      opacity: a.opacity, transform: `translateY(${a.translateY}px) scale(${a.scale})`,
+    }}>
+      {item.icon && (
+        <div style={{ marginBottom: 12 }}>
+          <Icon name={item.icon} size={v ? 48 : 52} color={props.primaryColor} animate={iconAnim} delay={delay + index * 6} />
+        </div>
+      )}
+      <div style={{
+        fontSize: v ? 56 : 64, fontWeight: 800, color: props.primaryColor,
+        letterSpacing: -2,
+      }}>
+        {count}{item.suffix || ""}
+      </div>
+      <div style={{
+        fontSize: v ? 26 : 24, fontWeight: 500, color: props.textColor,
+        marginTop: 8, opacity: 0.85,
+      }}>
+        {item.label}
+      </div>
+    </div>
+  );
+};
+
+export const StatCounter = ({
+  props,
+  items,
+  delay = 0,
+}) => {
+  const v = props.orientation === "vertical";
+  return (
+    <div style={{
+      display: "flex", gap: v ? 32 : 48, width: "100%",
+      flexDirection: v ? "column" : "row", justifyContent: "center",
+    }}>
+      {items.map((item, i) => (
+        <StatCard key={i} props={props} item={item} index={i} delay={delay} />
+      ))}
+    </div>
+  );
+};

@@ -1,0 +1,31 @@
+{
+  "name": "remotion-video-template",
+  "version": "1.0.0",
+  "description": "General-purpose Remotion video template for explainer, documentary, knowledge-sharing, product intro, and news-broadcast videos",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "studio": "remotion studio src/index.js",
+    "render:1080p": "remotion render src/index.js MainVideo --output public/output_1080p.mp4 --public-dir public",
+    "render:4k": "remotion render src/index.js MainVideo4K --output public/output_4k.mp4 --public-dir public --video-bitrate 16M",
+    "render:vertical": "remotion render src/index.js MainVideoVertical --output public/output_vertical.mp4 --public-dir public",
+    "render:yaml": "node render-yaml.mjs",
+    "build": "remotion bundle src/index.js"
+  },
+  "dependencies": {
+    "@remotion/cli": "^4.0.438",
+    "@remotion/media-utils": "^4.0.438",
+    "@remotion/paths": "^4.0.438",
+    "@remotion/shapes": "^4.0.438",
+    "@remotion/transitions": "^4.0.438",
+    "js-yaml": "^4.3.0",
+    "lucide-react": "^0.577.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "remotion": "^4.0.438",
+    "zod": "^4.4.3"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

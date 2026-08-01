@@ -1,0 +1,22 @@
+{
+  "total_duration": 75.0,
+  "fps": 24,
+  "total_frames": 1800,
+  "speech_rate": "normal",
+  "sections": [
+    { "name": "hero",      "label": "Intro",       "start_time": 0.0,  "end_time": 4.0,  "duration": 4.0,  "start_frame": 0,    "duration_frames": 96 },
+    { "name": "overview",  "label": "Overview",   "start_time": 4.0,  "end_time": 10.0, "duration": 6.0,  "start_frame": 96,   "duration_frames": 144 },
+    { "name": "stat",      "label": "Key Stat",    "start_time": 10.0, "end_time": 14.0, "duration": 4.0,  "start_frame": 240,  "duration_frames": 96 },
+    { "name": "feature",   "label": "Deep Dive",   "start_time": 14.0, "end_time": 20.0, "duration": 6.0,  "start_frame": 336,  "duration_frames": 144 },
+    { "name": "comparison","label": "Comparison",  "start_time": 20.0, "end_time": 26.0, "duration": 6.0,  "start_frame": 480,  "duration_frames": 144 },
+    { "name": "timeline",  "label": "Timeline",    "start_time": 26.0, "end_time": 32.0, "duration": 6.0,  "start_frame": 624,  "duration_frames": 144 },
+    { "name": "flow",      "label": "How It Works","start_time": 32.0, "end_time": 37.0, "duration": 5.0,  "start_frame": 768,  "duration_frames": 120 },
+    { "name": "quote",     "label": "Quote",       "start_time": 37.0, "end_time": 41.0, "duration": 4.0,  "start_frame": 888,  "duration_frames": 96 },
+    { "name": "data",      "label": "By Numbers",  "start_time": 41.0, "end_time": 47.0, "duration": 6.0,  "start_frame": 984,  "duration_frames": 144 },
+    { "name": "metrics",   "label": "Metrics",     "start_time": 47.0, "end_time": 53.0, "duration": 6.0,  "start_frame": 1128, "duration_frames": 144 },
+    { "name": "steps",     "label": "Steps",       "start_time": 53.0, "end_time": 59.0, "duration": 6.0,  "start_frame": 1272, "duration_frames": 144 },
+    { "name": "diagram",   "label": "Architecture","start_time": 59.0, "end_time": 65.0, "duration": 6.0,  "start_frame": 1416, "duration_frames": 144 },
+    { "name": "summary",   "label": "Summary",     "start_time": 65.0, "end_time": 70.0, "duration": 5.0,  "start_frame": 1560, "duration_frames": 120 },
+    { "name": "outro",     "label": "Outro",        "start_time": 70.0, "end_time": 75.0, "duration": 5.0,  "start_frame": 1680, "duration_frames": 120 }
+  ]
+}

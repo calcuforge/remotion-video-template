@@ -1,0 +1,66 @@
+# Sample Narration Script
+
+This is a placeholder script. Replace with your own narration, then generate
+TTS audio (podcast_audio.wav) and subtitles (podcast_audio.srt) from this
+script. The section names in [SECTION:xxx] markers MUST match the `name`
+fields in public/timing.json — that's how Video.js maps a section to its
+visual case.
+
+Estimate ~150 English words per minute (~280 Chinese chars per minute).
+A 75-second video needs roughly ~190 English words / ~350 Chinese chars.
+
+---
+
+[SECTION:hero]
+Welcome — in the next sixty seconds, you'll learn the five patterns that make
+explainer videos work.
+
+[SECTION:overview]
+We'll cover three things: the hook, the body, and the takeaway. Each one
+has a job; miss any of them and the video sags.
+
+[SECTION:stat]
+Seventy-three percent of viewers finish videos under ninety seconds. Length
+is a feature, not a bug.
+
+[SECTION:feature]
+The deep dive is where you earn trust. Pick one feature, show it working,
+resist the urge to list everything else.
+
+[SECTION:comparison]
+Side-by-side framing works because it lets the viewer decide. Show the
+before, show the after, let the contrast do the persuading.
+
+[SECTION:timeline]
+Stories move in one direction. Pick a start, pick an end, and only include
+the milestones that move the narrative forward.
+
+[SECTION:flow]
+Process shots demystify. Input, transform, output — three boxes and two
+arrows is enough for most explainer videos.
+
+[SECTION:quote]
+As the saying goes: design is not just what it looks like — design is how
+it works.
+
+[SECTION:data]
+When you show numbers, anchor them. Eighty-two, sixty-four, forty-seven,
+twenty-eight — each one needs a label, not just a bar.
+
+[SECTION:metrics]
+Key metrics belong together. Users, uptime, reach, rating — four numbers in
+one frame is the most a viewer can hold.
+
+[SECTION:steps]
+Tutorials work in threes. Sign up, connect, publish — three steps is the
+maximum a viewer will follow without rewatching.
+
+[SECTION:diagram]
+Architecture diagrams work when they're simple. Three nodes, two arrows,
+one sentence per node.
+
+[SECTION:summary]
+So that's the pattern. Hook, body, takeaway. Everything else is decoration.
+
+[SECTION:outro]
+Thanks for watching. Like, save, subscribe — and I'll see you next time.

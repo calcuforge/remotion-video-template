@@ -1,0 +1,12 @@
+node_modules/
+out/
+dist/
+build/
+.DS_Store
+*.log
+.env
+.env.local
+*.mp4
+*.wav
+!public/**/*.mp4
+!public/**/*.wav
