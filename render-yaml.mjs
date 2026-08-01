@@ -9,6 +9,11 @@
  * CPU cores by default) while keeping memory usage per render low. Short videos
  * (≤ one segment) are rendered in a single pass.
  *
+ * Failed runs RESUME: completed segment files are kept (video_dir/tmp/
+ * remotion-segments/) and skipped on the next run; the interrupted segment's
+ * file is removed so it re-renders from scratch instead of resuming a truncated
+ * file. Completed segments are cleaned up once concatenation succeeds.
+ *
  * Usage:
  *   node render-yaml.mjs <path-to-yaml-config> [--public-dir <dir>] [--output <path>]
  *                        [--segment-frames <n>] [--segment-workers <n>]
@@ -27,7 +32,8 @@ import {
   unlinkSync,
   existsSync,
   mkdirSync,
-  mkdtempSync,
+  statSync,
+  readdirSync,
   rmSync,
 } from "node:fs";
 import { resolve, dirname, basename, join } from "node:path";
@@ -401,38 +407,71 @@ try {
     });
   } else {
     // Render segments in parallel (bounded worker pool), then concatenate.
-    // Create segment temp dir inside the video directory (not the system temp),
-    // so all intermediate files stay within the project directory.
+    // Segment files live in a STABLE directory (video_dir/tmp/remotion-segments/)
+    // so a failed run can resume: on retry, segments whose file already exists
+    // are skipped instead of re-rendered. Files are named by frame range
+    // (seg_<start>_<end>.mp4), so a config change (fps / segment_frames) never
+    // reuses a stale segment from an older layout.
     const segTmpBase = join(dirname(outputAbsolute), "tmp");
     mkdirSync(segTmpBase, { recursive: true });
-    segmentDir = mkdtempSync(join(segTmpBase, "remotion-segments-"));
-    const segPaths = segments.map((_, i) =>
-      join(segmentDir, `seg_${String(i).padStart(4, "0")}.mp4`),
+    segmentDir = join(segTmpBase, "remotion-segments");
+    mkdirSync(segmentDir, { recursive: true });
+    const segPaths = segments.map(
+      ([start, end]) => join(segmentDir, `seg_${start}_${end}.mp4`),
     );
-    const workers = Math.min(segmentWorkers, segments.length);
+
+    // Prune stale segment files that don't match the current segment layout so
+    // they are never mistaken for a completed segment.
+    const validSegPaths = new Set(segPaths);
+    for (const f of readdirSync(segmentDir)) {
+      if (!f.startsWith("seg_")) continue;
+      const p = join(segmentDir, f);
+      if (!validSegPaths.has(p)) {
+        try { unlinkSync(p); } catch { /* ignore */ }
+      }
+    }
+
+    const pending = [];
+    for (let i = 0; i < segments.length; i++) {
+      if (existsSync(segPaths[i]) && statSync(segPaths[i]).size > 0) {
+        console.log(
+          `  segment ${i + 1}/${segments.length} cached (frames ${segments[i][0]}-${segments[i][1]}) — skip`,
+        );
+      } else {
+        pending.push(i);
+      }
+    }
+    const workers = Math.min(segmentWorkers, pending.length);
     console.log(
-      `Rendering ${segments.length} segment(s) with ${workers} concurrent worker(s) ` +
+      `Rendering ${pending.length} of ${segments.length} segment(s) with ${workers} concurrent worker(s) ` +
         `(~${segmentFrames} frames/segment)...`,
     );
 
     let next = 0;
     let done = 0;
     async function runWorker() {
-      while (next < segments.length) {
-        const i = next++;
+      while (next < pending.length) {
+        const i = pending[next++];
         const [start, end] = segments[i];
-        await renderMedia({
-          serveUrl,
-          composition,
-          codec,
-          frameRange: [start, end],
-          outputLocation: segPaths[i],
-          inputProps,
-          ...concurrencyOpt,
-          ...crfOpt,
-        });
+        try {
+          await renderMedia({
+            serveUrl,
+            composition,
+            codec,
+            frameRange: [start, end],
+            outputLocation: segPaths[i],
+            inputProps,
+            ...concurrencyOpt,
+            ...crfOpt,
+          });
+        } catch (err) {
+          // Remove the interrupted segment's output so a retry re-renders this
+          // segment from scratch instead of resuming from a truncated file.
+          try { unlinkSync(segPaths[i]); } catch { /* ignore */ }
+          throw err;
+        }
         done += 1;
-        console.log(`  segment ${done}/${segments.length} done (frames ${start}-${end})`);
+        console.log(`  segment ${done}/${pending.length} done (frames ${start}-${end})`);
       }
     }
     await Promise.all(Array.from({ length: workers }, () => runWorker()));
@@ -449,16 +488,21 @@ try {
       `ffmpeg -y -f concat -safe 0 -i "${listFile}" -c copy "${outputAbsolute}"`,
       { stdio: "inherit" },
     );
+    // Concatenation succeeded — cached segments are no longer needed.
+    rmSync(segmentDir, { recursive: true, force: true });
+    segmentDir = null;
   }
 
   console.log(`\nRender complete: ${outputAbsolute}`);
 } catch (err) {
   console.error("\nRender failed:", err && err.message ? err.message : err);
+  if (segmentDir) {
+    console.error(
+      `Completed segments are kept in "${segmentDir}" and will be skipped on retry.`,
+    );
+  }
   process.exit(1);
 } finally {
-  if (segmentDir && existsSync(segmentDir)) {
-    rmSync(segmentDir, { recursive: true, force: true });
-  }
   // Remotion's bundle() does NOT clean up its webpack output dir — do it here
   // to prevent remotion-webpack-bundle-* dirs from accumulating in the system temp.
   if (bundleDir && existsSync(bundleDir)) {
