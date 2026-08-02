@@ -343,6 +343,9 @@ const fps = config.fps || 24;
 const codec = (config.codec || "h264").toLowerCase();
 const supportsCrf = ["h264", "h265", "hevc", "vp8", "vp9", "av1"].includes(codec);
 const crfOpt = supportsCrf ? { crf: config.crf != null ? config.crf : 23 } : {};
+// Per-frame component/delayRender timeout (default 60s; Remotion's default is
+// 30s, which large AIGC video assets can exceed when loading).
+const timeoutMs = config.timeout_ms != null ? config.timeout_ms : 60000;
 
 // ─── Studio mode ─────────────────────────────────────────────────────────
 if (studioMode) {
@@ -403,6 +406,7 @@ try {
       codec,
       outputLocation: outputAbsolute,
       inputProps,
+      timeoutInMilliseconds: timeoutMs,
       ...concurrencyOpt,
       ...crfOpt,
     });
@@ -462,6 +466,7 @@ try {
             frameRange: [start, end],
             outputLocation: segPaths[i],
             inputProps,
+            timeoutInMilliseconds: timeoutMs,
             ...concurrencyOpt,
             ...crfOpt,
           });
