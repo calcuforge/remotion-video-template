@@ -164,8 +164,8 @@ const effectiveMemMB = Math.round(effectiveMemBytes / (1024 * 1024));
 // processes (segment_workers); the CPU budget bounds per-render concurrency.
 const RESERVE_MB = 1024;                // OS + Node.js + webpack bundle
 const MEM_FRAME_BUFFER_FACTOR = 1.2;    // headroom inside each Chrome for frame buffers
-const MAX_WORKERS = 4;                  // hard cap on concurrent segment renders
-const MAX_PER_RENDER_CONCURRENCY = 4;   // parallel frame-render tabs per Chrome
+const MAX_WORKERS = 3;                  // hard cap on concurrent segment renders
+const MAX_PER_RENDER_CONCURRENCY = 3;   // parallel frame-render tabs per Chrome
 
 // ─── CLI argument parsing ────────────────────────────────────────────────
 const args = process.argv.slice(2);
