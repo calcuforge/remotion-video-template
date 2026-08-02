@@ -107,6 +107,7 @@ const yamlConfigSchema = z.object({
       text: z.string(),
       start_frame: z.number(),
       end_frame: z.number(),
+      scene_index: z.number().optional(),
     })).optional(),
   }).optional(),
   stories: z.array(z.object({

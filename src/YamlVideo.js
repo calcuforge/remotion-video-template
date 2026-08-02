@@ -305,18 +305,25 @@ export const YamlVideo = ({ config }) => {
   const targetTotal = totalFrames + transitionCount * effectiveTransitionFrames;
   const audioScale = totalFrames > 0 ? targetTotal / totalFrames : 1;
 
-  // Map subtitles (authored in raw audio frames, one per scene in scene order)
-  // into rendered frame space. Two adjustments align them with the visuals:
+  // Map subtitles (authored in raw audio frames) into rendered frame space.
+  // Two adjustments align them with the visuals:
   //   1. × audioScale — the timeline is stretched to accommodate transitions.
-  //   2. − i·effectiveTransitionFrames — TransitionSeries overlaps each adjacent
-  //      scene by the transition duration, so scene i actually starts i overlaps
-  //      earlier than the naive scaled cumulative sum. Without this, subtitles
-  //      (and audio) drift progressively LATER than the visuals.
-  const subtitleList = (config.subtitle?.list || []).map((s, i) => ({
-    ...s,
-    start_frame: Math.max(0, Math.round((s.start_frame || 0) * audioScale) - i * effectiveTransitionFrames),
-    end_frame: Math.max(0, Math.round((s.end_frame || 0) * audioScale) - i * effectiveTransitionFrames),
-  }));
+  //   2. − sceneIndex·effectiveTransitionFrames — TransitionSeries overlaps each
+  //      adjacent scene by the transition duration, so scene k actually starts k
+  //      overlaps earlier than the naive scaled cumulative sum. Without this,
+  //      subtitles (and audio) drift progressively LATER than the visuals.
+  // Each subtitle carries `scene_index` — the flat index of the scene it belongs
+  // to (a narration split into 1-N scenes emits one-or-more subtitles per scene,
+  // all sharing that scene's index). Falls back to the subtitle's own list index
+  // for configs that predate scene_index.
+  const subtitleList = (config.subtitle?.list || []).map((s, i) => {
+    const sceneIndex = s.scene_index != null ? s.scene_index : i;
+    return {
+      ...s,
+      start_frame: Math.max(0, Math.round((s.start_frame || 0) * audioScale) - sceneIndex * effectiveTransitionFrames),
+      end_frame: Math.max(0, Math.round((s.end_frame || 0) * audioScale) - sceneIndex * effectiveTransitionFrames),
+    };
+  });
   // The per-index transition shift moves each subtitle earlier by a different
   // amount, which makes consecutive subtitles overlap by ~transitionFrames.
   // Overlap would render two subtitles at once (the previous one lingering
