@@ -15,6 +15,10 @@ const PAN_MAP = {
 };
 
 const DEFAULT_ZOOM_RANGE = { in: [1.0, 1.15], out: [1.15, 1.0], none: [1.0, 1.0] };
+// Overscan applied while panning: a translate(%) shifts the image by a fraction
+// of its own size, and at scale ≈ 1.0 that shift exposes the frame background
+// at the edges. 1.1 (10% slack) comfortably covers the 5% max pan in PAN_MAP.
+const OVERSCAN = 1.1;
 
 /**
  * KenBurnsImage — static image with configurable Ken Burns effect (zoom + pan).
@@ -72,6 +76,8 @@ export const KenBurnsImage = ({
     ? interpolate(frame, [0, duration], [yStart, yEnd], { extrapolateRight: "clamp" })
     : 0;
 
+  const overscan = panDir !== "none" ? OVERSCAN : 1;
+
   if (role === "background") {
     return (
       <AbsoluteFill>
@@ -81,7 +87,7 @@ export const KenBurnsImage = ({
             width: "100%",
             height: "100%",
             objectFit: "cover",
-            transform: `scale(${scaleVal}) translate(${tx}%, ${ty}%)`,
+            transform: `scale(${scaleVal * overscan}) translate(${tx}%, ${ty}%)`,
           }}
         />
         <AbsoluteFill
@@ -110,7 +116,7 @@ export const KenBurnsImage = ({
         style={{
           width: "100%",
           display: "block",
-          transform: `scale(${scaleVal}) translate(${tx}%, ${ty}%)`,
+          transform: `scale(${scaleVal * overscan}) translate(${tx}%, ${ty}%)`,
         }}
       />
       {caption && (
