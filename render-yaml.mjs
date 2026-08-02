@@ -35,6 +35,7 @@ import {
   statSync,
   readdirSync,
   rmSync,
+  renameSync,
 } from "node:fs";
 import { resolve, dirname, basename, join } from "node:path";
 import { execSync } from "node:child_process";
@@ -491,6 +492,27 @@ try {
     // Concatenation succeeded — cached segments are no longer needed.
     rmSync(segmentDir, { recursive: true, force: true });
     segmentDir = null;
+  }
+
+  // Guarantee the final output is faststart (moov atom at the front) so it can
+  // be streamed / sought over HTTP without a slow tail range-request. Idempotent
+  // and lossless (stream copy) — fails soft, keeping the rendered output.
+  if (existsSync(outputAbsolute)) {
+    const fsTmp = `${outputAbsolute}.faststart.tmp.mp4`;
+    try {
+      execSync(
+        `ffmpeg -y -i "${outputAbsolute}" -c copy -movflags +faststart "${fsTmp}"`,
+        { stdio: "inherit" },
+      );
+      rmSync(outputAbsolute, { force: true });
+      renameSync(fsTmp, outputAbsolute);
+      console.log("Applied faststart (moov atom moved to the front).");
+    } catch (err) {
+      if (existsSync(fsTmp)) rmSync(fsTmp, { force: true });
+      console.error(
+        `WARNING: faststart re-mux failed, keeping original output: ${err && err.message ? err.message : err}`,
+      );
+    }
   }
 
   console.log(`\nRender complete: ${outputAbsolute}`);
