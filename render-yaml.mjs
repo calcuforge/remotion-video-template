@@ -2,12 +2,12 @@
  * render-yaml.mjs — Convert a remotion_sections.yaml config to JSON props and
  * render it with Remotion.
  *
- * Rendering strategy (optimized): the composition is bundled once, then rendered
- * in frame-range SEGMENTS in parallel (each segment uses Remotion's default
- * per-render concurrency), and the segments are concatenated with ffmpeg. This
- * roughly multiplies throughput vs a single render (which only uses ~half the
- * CPU cores by default) while keeping memory usage per render low. Short videos
- * (≤ one segment) are rendered in a single pass.
+ * Rendering strategy: the composition is bundled once, then rendered in
+ * frame-range SEGMENTS ONE AT A TIME (single Chrome process — stable, bounded
+ * memory), and the segments are concatenated with ffmpeg. Per-render concurrency
+ * (parallel frames inside the single Chrome) is auto-sized from the CPU (≈ half
+ * the effective cores, capped). Short videos (≤ one segment) are rendered in a
+ * single pass.
  *
  * Failed runs RESUME: completed segment files are kept (video_dir/tmp/
  * remotion-segments/) and skipped on the next run; the interrupted segment's
@@ -156,16 +156,14 @@ const effectiveMemBytes =
     : hostMemBytes;
 const effectiveMemMB = Math.round(effectiveMemBytes / (1024 * 1024));
 
-// ─── Concurrency / memory budget constants ────────────────────────────────
-// Each segment render spawns a headless Chrome process whose base memory scales
-// with frame size (~1 GB @1080p, ~2 GB @4K). Per-render `concurrency` (parallel
-// frame renders inside one Chrome) adds frame-buffer memory on top, so it is
-// capped low. The memory budget bounds the NUMBER of concurrent Chrome
-// processes (segment_workers); the CPU budget bounds per-render concurrency.
-const RESERVE_MB = 1024;                // OS + Node.js + webpack bundle
+// ─── Concurrency constants ────────────────────────────────────────────────
+// Rendering is single-process: one segment at a time (one headless Chrome), so
+// memory stays bounded (~1 GB @1080p / ~2 GB @4K). Only per-render concurrency
+// (parallel frames inside the single Chrome) is auto-sized from the CPU and
+// capped so the Chrome's frame buffers stay predictable.
 const MEM_FRAME_BUFFER_FACTOR = 1.2;    // headroom inside each Chrome for frame buffers
-const MAX_WORKERS = 3;                  // hard cap on concurrent segment renders
-const MAX_PER_RENDER_CONCURRENCY = 3;   // parallel frame-render tabs per Chrome
+const DEFAULT_WORKERS = 1;              // render one segment at a time (single Chrome)
+const MAX_PER_RENDER_CONCURRENCY = 8;   // hard cap on parallel frames per Chrome
 
 // ─── CLI argument parsing ────────────────────────────────────────────────
 const args = process.argv.slice(2);
@@ -176,14 +174,15 @@ Options:
   --public-dir <dir>       Public directory for static files (default: public/)
   --output <path>          Output video path (default: public/output_yaml.mp4)
   --segment-frames <n>     Frames per render segment (default: 600). The video is
-                           split into segments of this size, rendered in parallel,
-                           then concatenated. Videos ≤ one segment render in one pass.
-  --segment-workers <n>    Max segments rendered concurrently (i.e. max headless
-                           Chrome processes). Default: auto-sized from the CPU count
-                           AND the memory budget — each Chrome costs ~1 GB @1080p /
-                           ~2 GB @4K, so the default never over-subscribes RAM
-                           (in a container, cgroup v2 CPU + memory limits are used).
-                           Cap is 4; set explicitly to override.
+                           split into segments of this size, rendered one at a time
+                           (single Chrome), then concatenated. Videos ≤ one segment
+                           render in one pass.
+  --segment-workers <n>    Concurrent segment renders (max headless Chrome
+                           processes). Default: 1 (serial — single Chrome, bounded
+                           memory). Set > 1 to parallelize across Chomes at the
+                           cost of higher memory. Per-render concurrency (frames
+                           in parallel) is auto-sized from the CPU (≈ half the
+                           effective cores, capped at 8) regardless.
   --studio                 Open in Remotion Studio instead of rendering
   --help, -h               Show this help
 
@@ -251,46 +250,26 @@ if (resolution === "4K" && orientation === "vertical") {
   compositionId = "YamlVideo";
 }
 
-// ─── Auto-size segment_workers + per-render concurrency (resolution-aware) ─
-// Workers = number of concurrent Chrome processes → memory-bounded. Per-render
-// concurrency = parallel frame renders inside one Chrome → CPU-bounded + capped
-// so each Chrome's frame buffers stay predictable.
-// Base per-Chrome memory: ~1 GB @1080p (horizontal or vertical), ~2 GB @4K.
+// ─── Render strategy: single-process serial ───────────────────────────────
+// One segment at a time (a single Chrome process) for stable, bounded memory;
+// only per-render concurrency is auto-sized from the CPU (≈ half the effective
+// cores, hard-capped) so the one Chrome uses most cores without over-subscribing
+// frame buffers. Base per-Chrome memory: ~1 GB @1080p, ~2 GB @4K.
 const memPerRenderMB = Math.round(
   (resolution === "4K" ? 2048 : 1024) * MEM_FRAME_BUFFER_FACTOR,
 );
-// Budget for Chrome processes: cap the render footprint at ~75% of RAM so the
-// OS, Node.js, the webpack bundle, and frame-buffer spikes always have headroom.
-const memBudgetMB = Math.max(
-  1024,
-  Math.round(effectiveMemMB * 0.75) - RESERVE_MB,
-);
-const maxWorkersByMem = Math.max(1, Math.floor(memBudgetMB / memPerRenderMB));
-const maxWorkersByCpu = effectiveCpuCount;
 
 if (segmentWorkers == null) {
-  segmentWorkers = Math.max(
-    1,
-    Math.min(maxWorkersByMem, maxWorkersByCpu, MAX_WORKERS),
-  );
+  segmentWorkers = DEFAULT_WORKERS;
 }
 
-// Always set explicitly (never null) so we never over-subscribe memory.
 const renderConcurrency = Math.max(
   1,
   Math.min(
     MAX_PER_RENDER_CONCURRENCY,
-    Math.floor(effectiveCpuCount / segmentWorkers),
+    Math.floor(effectiveCpuCount / 2),
   ),
 );
-
-if (segmentWorkers * memPerRenderMB > memBudgetMB) {
-  console.warn(
-    `WARNING: segment_workers=${segmentWorkers} × ~${memPerRenderMB}MB/Chrome exceeds the ` +
-      `memory budget (~${memBudgetMB}MB). Rendering may run out of memory — lower ` +
-      `--segment-workers or the video resolution if it fails.`,
-  );
-}
 
 console.log(
   `Resource detection: container=${inContainer ? "yes" : "no"}, ` +
@@ -411,7 +390,7 @@ try {
       ...crfOpt,
     });
   } else {
-    // Render segments in parallel (bounded worker pool), then concatenate.
+    // Render segments one at a time (single Chrome, serial), then concatenate.
     // Segment files live in a STABLE directory (video_dir/tmp/remotion-segments/)
     // so a failed run can resume: on retry, segments whose file already exists
     // are skipped instead of re-rendered. Files are named by frame range
