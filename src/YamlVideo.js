@@ -144,7 +144,7 @@ const buildThemeProps = (config) => {
     scaleFactor: config.resolution === "4K" ? 2 : 1,
     // Defaults for features not in the YAML theme
     enableAnimations: true,
-    showProgressBar: true,
+    showProgressBar: t.show_progress_bar !== false,
     progressBarHeight: 65,
     progressFontSize: 19,
     progressActiveColor: t.primary_color || "#4f6ef7",
