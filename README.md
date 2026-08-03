@@ -413,6 +413,179 @@ Field reference:
 | `heading` | string | Optional section title (rendered generically above the component). |
 | `delay` | number | Entrance delay in frames (default 0). |
 
+#### StatHighlight — full-bleed hero number
+
+```yaml
+remotion_component: StatHighlight
+remotion_data:
+  value: 1997
+  unit: 年
+  label: 深蓝击败卡斯帕罗夫
+  description: "全世界为之震惊"      # optional
+  icon: trophy                     # optional
+```
+
+A 160px animated number on a glow + dot-grid backdrop. Use when ONE metric is
+the scene's entire point (milestones, impact figures).
+
+#### MetricsRow — dashboard stat cards
+
+```yaml
+remotion_component: MetricsRow
+remotion_data:
+  title: "开源力量"                  # optional
+  items:
+  - value: 80
+    label: 开源模型
+    icon: box
+  - value: 65
+    label: 社区贡献者
+    icon: users
+  - value: 90
+    label: 衍生应用
+    icon: app-window
+```
+
+Stat cards in a row/grid (up to 4 columns horizontal; 1-2 columns vertical).
+Labels must stay short (≤10 chars).
+
+#### ProgressRing — animated donut progress
+
+```yaml
+remotion_component: ProgressRing
+remotion_data:
+  value: 85              # 0-100, the arc sweeps in
+  suffix: "%"
+  label: 市场渗透率
+  unit: ""               # optional trailing unit text
+  size: 260              # optional, px (default 260 / 200 vertical)
+```
+
+Donut progress with a glowing animated arc and the number in the center. Use
+for completion rates, shares, adoption percentages.
+
+#### StepProgress — numbered stages with active highlight
+
+```yaml
+remotion_component: StepProgress
+remotion_data:
+  title: "早期历程"                   # optional
+  activeStep: 1                      # 0-based, highlight this step
+  steps:
+  - label: 1956
+    description: 达特茅斯会议
+  - label: 1960s
+    description: 乐观探索
+  - label: 1970s
+    description: 遭遇瓶颈
+```
+
+Numbered stage cards with an active-step highlight (border + glow + scale).
+Horizontal on 16:9, stacked vertical on 9:16.
+
+#### SplitLayout — text + visual side by side
+
+```yaml
+remotion_component: SplitLayout
+remotion_data:
+  title: "深蓝击败卡斯帕罗夫"
+  description: "1997 年，计算机首次战胜人类世界冠军。"
+  rightImage: assets/photo.jpg      # image side (resolved like AssetImage)
+  rightCaption: "IBM 深蓝"           # optional caption under the image
+  # — or, instead of an image, an icon list:
+  # rightItems:
+  # - icon: cpu
+  #   title: 128 颗处理器
+  #   description: 每秒分析两亿步棋
+  accent: left                       # "left" (default) | "right" — swap sides
+```
+
+Text on one side, an image or icon list on the other (vertical stacks them).
+`rightItems` wins when both are given.
+
+#### ZigzagCards — alternating feature cards
+
+```yaml
+remotion_component: ZigzagCards
+remotion_data:
+  title: "专家系统的优势"              # optional
+  items:
+  - icon: zap
+    title: 知识库推理
+    description: 用规则模拟专家决策
+  - icon: rocket
+    title: 商用落地
+    description: 企业级部署
+  - icon: shield
+    title: 可靠性
+    description: 稳定输出可解释
+```
+
+Left/right alternating cards (vertical stacks left), 6-color rotation, side
+bar accent. Use for feature lists, pros/cons, short sequences.
+
+#### KeywordCloud — floating keyword chips
+
+```yaml
+remotion_component: KeywordCloud
+remotion_data:
+  title: "深度学习"                    # optional
+  keywords:
+  - text: 神经网络
+    weight: 3                         # 1-3: chip size (28/40/56px)
+  - text: 图像识别
+    weight: 2
+  - text: 反向传播
+    weight: 1
+  - text: 卷积
+    weight: 1
+```
+
+Weighted keyword chips drifting gently with staggered fade-in; weight 3 chips
+are solid gradient blocks. Use for concept/term emphasis — names, keywords,
+disciplines.
+
+#### MapPins — abstract location map
+
+```yaml
+remotion_component: MapPins
+remotion_data:
+  title: "各国 AI 战略"               # optional
+  pins:
+  - label: 美国
+    x: 18                             # percent coordinates 0-100
+    y: 42
+  - label: 中国
+    x: 74
+    y: 55
+  - label: 欧盟
+    x: 52
+    y: 35
+  lines:                              # optional arcs between pins (by index)
+  - from: 0
+    to: 1
+```
+
+A schematic lat/long grid with pulsing pins at percentage coordinates and
+optional dashed arcs between them. No real borders — deliberately abstract.
+Use for geographic narrative (where, which regions).
+
+#### AudioWaveform — audio frequency visualization
+
+```yaml
+remotion_component: AudioWaveform
+remotion_data:
+  audioSrc: stories/story1/narration3/speech.wav   # relative to public dir, or http
+  mode: bars                          # "bars" (default) | "wave" | "dots"
+  position: bottom                    # "bottom" (default) | "top" | "inline"
+  barCount: 32                        # power of 2
+  height: 60
+  opacity: 0.4
+```
+
+A real-time spectrum strip synced to the given audio track (narration or BGM).
+Use for voice/audio emphasis scenes — the waveform reacts to speech.
+
 ### Audio
 
 Each section can specify an `audio` field pointing to a narration audio file
@@ -487,7 +660,9 @@ Import from `./components` (or `./components/index.js`):
 **Content components** — `QuoteBlock`, `FeatureGrid`, `IconCard`,
 `ComparisonCard`, `StatCounter`, `DataBar`, `Timeline`, `FlowChart`,
 `CodeBlock`, `DataTable`, `DiagramReveal`, `AnimationDemo`, `AssetImage`,
-`AssetVideo`, `KenBurnsImage`, `MediaSection`
+`AssetVideo`, `KenBurnsImage`, `MediaSection`, `StatHighlight`, `MetricsRow`,
+`ProgressRing`, `StepProgress`, `SplitLayout`, `ZigzagCards`, `KeywordCloud`,
+`MapPins`, `AudioWaveform`
 
 **Infrastructure** — `ChapterProgressBar`, `Subtitles`, `Icon`,
 `ErrorBoundary`, `useTiming`, `useAssets`, `getAsset`, `getSectionAssets`,

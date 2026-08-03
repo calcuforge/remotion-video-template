@@ -120,6 +120,63 @@ const SCHEMAS = {
       data: { required: ["value", "label"], optional: ["suffix"] },
     },
   },
+  StatHighlight: {
+    required: ["value", "label"],
+    optional: ["heading", "unit", "description", "icon", "delay"],
+  },
+  MetricsRow: {
+    required: ["items"],
+    optional: ["heading", "title", "delay"],
+    arrayItems: {
+      items: { required: ["value", "label"], optional: ["suffix", "icon"] },
+    },
+  },
+  ProgressRing: {
+    required: ["value", "label"],
+    optional: ["heading", "unit", "suffix", "size", "delay"],
+  },
+  StepProgress: {
+    required: ["steps"],
+    optional: ["heading", "title", "activeStep", "delay"],
+    arrayItems: {
+      steps: { required: ["label"], optional: ["description"] },
+    },
+  },
+  SplitLayout: {
+    required: ["title"],
+    optional: ["heading", "description", "rightImage", "rightCaption", "rightItems", "accent", "delay"],
+    enums: { accent: ["left", "right"] },
+    arrayItems: {
+      rightItems: { required: ["title"], optional: ["icon", "description"] },
+    },
+  },
+  ZigzagCards: {
+    required: ["items"],
+    optional: ["heading", "title", "delay"],
+    arrayItems: {
+      items: { required: ["title"], optional: ["icon", "description", "color"] },
+    },
+  },
+  KeywordCloud: {
+    required: ["keywords"],
+    optional: ["heading", "title", "delay"],
+    arrayItems: {
+      keywords: { required: ["text"], optional: ["weight"] },
+    },
+  },
+  MapPins: {
+    required: ["pins"],
+    optional: ["heading", "title", "lines", "delay"],
+    arrayItems: {
+      pins: { required: ["label", "x", "y"], optional: ["description"] },
+      lines: { required: ["from", "to"], optional: [] },
+    },
+  },
+  AudioWaveform: {
+    required: ["audioSrc"],
+    optional: ["heading", "mode", "position", "barCount", "height", "opacity", "delay"],
+    enums: { mode: ["bars", "wave", "dots"], position: ["bottom", "top", "inline"] },
+  },
 };
 
 // ─── Short-label checks ───────────────────────────────────────────────────
@@ -157,6 +214,22 @@ const SHORT_LABEL_SPECS = {
   MediaSection: [
     { path: "data[].label", max: 10 },
     { path: "data[].suffix", max: 4 },
+  ],
+  MetricsRow: [
+    { path: "items[].label", max: 10 },
+    { path: "items[].suffix", max: 4 },
+  ],
+  StepProgress: [
+    { path: "steps[].label", max: 14 },
+  ],
+  ZigzagCards: [
+    { path: "items[].title", max: 14 },
+  ],
+  MapPins: [
+    { path: "pins[].label", max: 14 },
+  ],
+  KeywordCloud: [
+    { path: "keywords[].text", max: 16 },
   ],
 };
 

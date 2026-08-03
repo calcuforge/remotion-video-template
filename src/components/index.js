@@ -17,7 +17,9 @@
  *   QuoteBlock, FeatureGrid, IconCard, ComparisonCard,
  *   StatCounter, DataBar, Timeline, FlowChart,
  *   CodeBlock, DataTable, DiagramReveal, AnimationDemo,
- *   AssetImage, AssetVideo, KenBurnsImage, MediaSection
+ *   AssetImage, AssetVideo, KenBurnsImage, MediaSection,
+ *   StatHighlight, MetricsRow, ProgressRing, StepProgress,
+ *   SplitLayout, ZigzagCards, KeywordCloud, MapPins, AudioWaveform
  *
  * Subtitles (renders SRT directly, no FFmpeg):
  *   Subtitles
@@ -82,3 +84,12 @@ export { AssetImage } from "./AssetImage.js";
 export { AssetVideo } from "./AssetVideo.js";
 export { KenBurnsImage } from "./KenBurnsImage.js";
 export { MediaSection } from "./MediaSection.js";
+export { StatHighlight } from "./StatHighlight.js";
+export { MetricsRow } from "./MetricsRow.js";
+export { ProgressRing } from "./ProgressRing.js";
+export { StepProgress } from "./StepProgress.js";
+export { SplitLayout } from "./SplitLayout.js";
+export { ZigzagCards } from "./ZigzagCards.js";
+export { KeywordCloud } from "./KeywordCloud.js";
+export { MapPins } from "./MapPins.js";
+export { AudioWaveform } from "./AudioWaveform.js";

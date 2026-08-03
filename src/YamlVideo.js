@@ -37,6 +37,15 @@ import {
   AssetVideo,
   KenBurnsImage,
   MediaSection,
+  StatHighlight,
+  MetricsRow,
+  ProgressRing,
+  StepProgress,
+  SplitLayout,
+  ZigzagCards,
+  KeywordCloud,
+  MapPins,
+  AudioWaveform,
 } from "./components/index.js";
 
 // ---------------------------------------------------------------------------
@@ -59,6 +68,15 @@ const COMPONENT_MAP = {
   AssetVideo,
   KenBurnsImage,
   MediaSection,
+  StatHighlight,
+  MetricsRow,
+  ProgressRing,
+  StepProgress,
+  SplitLayout,
+  ZigzagCards,
+  KeywordCloud,
+  MapPins,
+  AudioWaveform,
 };
 
 // ---------------------------------------------------------------------------
