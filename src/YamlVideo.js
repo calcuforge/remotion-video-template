@@ -36,6 +36,7 @@ import {
   AssetImage,
   AssetVideo,
   KenBurnsImage,
+  MediaSection,
 } from "./components/index.js";
 
 // ---------------------------------------------------------------------------
@@ -57,6 +58,7 @@ const COMPONENT_MAP = {
   AssetImage,
   AssetVideo,
   KenBurnsImage,
+  MediaSection,
 };
 
 // ---------------------------------------------------------------------------

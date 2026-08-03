@@ -364,6 +364,55 @@ remotion_data:
   muted: true                # optional, default true
 ```
 
+#### MediaSection — single image or image grid + text + stats
+
+One scene that shows one image (large) or a grid of images, with an optional
+description line above and a row of stat cards below. Use when a single visual
+isn't enough — multi-case showcases, product screenshots, series of images
+with supporting metrics.
+
+```yaml
+# Single image
+remotion_component: MediaSection
+remotion_data:
+  items:
+  - src: assets/photo1.jpg
+    caption: "Caption"       # optional
+  layout: full               # "card" (default) | "full" — single-image style
+  text: "AI 落地三大场景"      # optional description above the image
+  data:                      # optional stat cards below
+  - value: "3"
+    label: 落地场景
+    suffix: "个"
+```
+
+```yaml
+# Image grid (2 or 3 columns)
+remotion_component: MediaSection
+remotion_data:
+  items:
+  - src: assets/photo1.jpg
+    caption: "场景一"
+  - src: assets/photo2.jpg
+    caption: "场景二"
+  - src: assets/photo3.jpg    # 2 columns → 3rd image wraps; vertical drops to 1 col
+    caption: "场景三"
+  columns: 2                  # 2 (default) | 3 — grid mode only
+  text: "AI 落地三大场景"
+```
+
+Field reference:
+
+| Field | Type | Description |
+|---|---|---|
+| `items` | array (required) | `{ src, alt?, caption?, borderColor? }`. `src` relative to public dir or absolute. Length 1 → single image, >1 → grid. |
+| `columns` | `2` \| `3` | Grid column count (default 2); ignored for single image; vertical orientation collapses to 1 column. |
+| `layout` | `"card"` \| `"full"` | Single-image style (default `card`); ignored for grids. |
+| `text` | string | Description rendered above the images. |
+| `data` | array | Stat cards below: `{ value, label, suffix? }`. Labels must stay short (≤10 chars, no sentence punctuation). |
+| `heading` | string | Optional section title (rendered generically above the component). |
+| `delay` | number | Entrance delay in frames (default 0). |
+
 ### Audio
 
 Each section can specify an `audio` field pointing to a narration audio file
@@ -438,7 +487,7 @@ Import from `./components` (or `./components/index.js`):
 **Content components** — `QuoteBlock`, `FeatureGrid`, `IconCard`,
 `ComparisonCard`, `StatCounter`, `DataBar`, `Timeline`, `FlowChart`,
 `CodeBlock`, `DataTable`, `DiagramReveal`, `AnimationDemo`, `AssetImage`,
-`AssetVideo`, `KenBurnsImage`
+`AssetVideo`, `KenBurnsImage`, `MediaSection`
 
 **Infrastructure** — `ChapterProgressBar`, `Subtitles`, `Icon`,
 `ErrorBoundary`, `useTiming`, `useAssets`, `getAsset`, `getSectionAssets`,

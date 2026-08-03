@@ -17,7 +17,7 @@
  *   QuoteBlock, FeatureGrid, IconCard, ComparisonCard,
  *   StatCounter, DataBar, Timeline, FlowChart,
  *   CodeBlock, DataTable, DiagramReveal, AnimationDemo,
- *   AssetImage, AssetVideo, KenBurnsImage
+ *   AssetImage, AssetVideo, KenBurnsImage, MediaSection
  *
  * Subtitles (renders SRT directly, no FFmpeg):
  *   Subtitles
@@ -81,3 +81,4 @@ export { useAssets, getAsset, getSectionAssets, assetSrc } from "./useAssets.js"
 export { AssetImage } from "./AssetImage.js";
 export { AssetVideo } from "./AssetVideo.js";
 export { KenBurnsImage } from "./KenBurnsImage.js";
+export { MediaSection } from "./MediaSection.js";

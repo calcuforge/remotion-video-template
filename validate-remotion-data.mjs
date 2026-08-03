@@ -111,6 +111,15 @@ const SCHEMAS = {
             "up-left", "up-right", "down-left", "down-right"],
     },
   },
+  MediaSection: {
+    required: ["items"],
+    optional: ["heading", "columns", "layout", "text", "data", "delay"],
+    enums: { layout: ["card", "full"], columns: [2, 3] },
+    arrayItems: {
+      items: { required: ["src"], optional: ["alt", "caption", "borderColor"] },
+      data: { required: ["value", "label"], optional: ["suffix"] },
+    },
+  },
 };
 
 // ─── Short-label checks ───────────────────────────────────────────────────
@@ -144,6 +153,10 @@ const SHORT_LABEL_SPECS = {
   ],
   DataTable: [
     { path: "headers[]", max: 14, punctWarn: true },
+  ],
+  MediaSection: [
+    { path: "data[].label", max: 10 },
+    { path: "data[].suffix", max: 4 },
   ],
 };
 
