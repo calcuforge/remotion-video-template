@@ -167,17 +167,41 @@ try {
   }
 
   const outputAbsolute = resolve(outputPath);
-  await renderMedia({
-    serveUrl,
-    composition,
-    codec,
-    frameRange: [frameStart, frameEnd],
-    outputLocation: outputAbsolute,
-    inputProps,
-    timeoutInMilliseconds: timeoutMs,
-    concurrency,
-    ...crfOpt,
-  });
+
+  // 渲染失败不立即退出:重试渲染该段(最多 3 次),重试前清理输出文件。
+  // 仅当全部重试失败(渲染进程真正中止)才退出返回错误。
+  const MAX_RENDER_ATTEMPTS = 3;
+  let lastErr = null;
+  for (let attempt = 1; attempt <= MAX_RENDER_ATTEMPTS; attempt++) {
+    try {
+      await renderMedia({
+        serveUrl,
+        composition,
+        codec,
+        frameRange: [frameStart, frameEnd],
+        outputLocation: outputAbsolute,
+        inputProps,
+        timeoutInMilliseconds: timeoutMs,
+        concurrency,
+        ...crfOpt,
+      });
+      lastErr = null;
+      break;
+    } catch (err) {
+      lastErr = err;
+      console.error(
+        `Render attempt ${attempt}/${MAX_RENDER_ATTEMPTS} failed: ${err && err.message ? err.message : err}`,
+      );
+      if (attempt < MAX_RENDER_ATTEMPTS) {
+        // 清理可能残留的段输出,等待后重试(serveStatic 偶发拉取超时可恢复)
+        try { unlinkSync(outputAbsolute); } catch { /* ignore */ }
+        await new Promise((r) => setTimeout(r, 5000 * attempt));
+      }
+    }
+  }
+  if (lastErr) {
+    throw lastErr;
+  }
 
   // Guarantee faststart (moov atom at the front) so merged output streams well.
   if (existsSync(outputAbsolute)) {
