@@ -45,8 +45,12 @@ Options:
   --public-dir <dir>       Public directory for static files (required for
                            AIGC assets — audio, images, videos referenced by
                            the config)
-  --output <path>          Output segment video path (required)
-  --frame-range "<s>:<e>"  Frame range to render, inclusive (required)
+  --output <path>          Output segment video path (single-segment mode)
+  --frame-range "<s>:<e>"  Frame range to render, inclusive (single mode)
+  --segments "s1:e1,s2:e2" Comma-separated frame ranges to render in ONE
+                           process (Chrome reused across segments); outputs
+                           written to --output-dir as seg_<s>_<e>.mp4
+  --output-dir <dir>       Output dir for --segments mode
   --concurrency <n>        Parallel frames inside Chrome (default: 4)
   --timeout-ms <ms>        Per-frame component/delayRender timeout
                            (default: from config.timeout_ms or 60000)
@@ -65,6 +69,8 @@ if (!existsSync(yamlPath)) {
 let publicDir = "public";
 let outputPath = "public/segment.mp4";
 let frameRange = null;
+let segments = null; // [{start, end}, ...] multi-segment mode
+let outputDir = null;
 let concurrency = 4;
 let timeoutMsOverride = null;
 let serveUrlOverride = null;
@@ -87,11 +93,23 @@ for (let i = 1; i < args.length; i++) {
     timeoutMsOverride = Math.max(1000, parseInt(args[++i], 10) || 60000);
   } else if (args[i] === "--serve-url" && i + 1 < args.length) {
     serveUrlOverride = args[++i];
+  } else if (args[i] === "--segments" && i + 1 < args.length) {
+    segments = [];
+    for (const part of args[++i].split(",")) {
+      const m = /^\s*(\d+)\s*:\s*(\d+)\s*$/.exec(part.trim());
+      if (!m) {
+        console.error(`Error: invalid --segments item "${part}", expected "start:end"`);
+        process.exit(1);
+      }
+      segments.push([parseInt(m[1], 10), parseInt(m[2], 10)]);
+    }
+  } else if (args[i] === "--output-dir" && i + 1 < args.length) {
+    outputDir = args[++i];
   }
 }
 
-if (!frameRange) {
-  console.error("Error: --frame-range \"<start>:<end>\" is required");
+if (!frameRange && !segments) {
+  console.error('Error: --frame-range "<start>:<end>" or --segments is required');
   process.exit(1);
 }
 
@@ -168,61 +186,70 @@ try {
 
   const outputAbsolute = resolve(outputPath);
 
-  // 渲染失败不立即退出:重试渲染该段(最多 3 次),重试前清理输出文件。
-  // 仅当全部重试失败(渲染进程真正中止)才退出返回错误。
+  // 待渲染段:--segments 多段(单进程循环,Chrome 复用)或 --frame-range 单段。
+  // 每段渲染失败不立即退出:重试该段(最多 MAX_RENDER_ATTEMPTS 次,连续失败才
+  // 退出返回错误),重试前清理输出文件。
+  const segs = segments && segments.length > 0 ? segments : [[frameStart, frameEnd]];
   const MAX_RENDER_ATTEMPTS = 3;
   let lastErr = null;
-  for (let attempt = 1; attempt <= MAX_RENDER_ATTEMPTS; attempt++) {
-    try {
-      await renderMedia({
-        serveUrl,
-        composition,
-        codec,
-        frameRange: [frameStart, frameEnd],
-        outputLocation: outputAbsolute,
-        inputProps,
-        timeoutInMilliseconds: timeoutMs,
-        concurrency,
-        ...crfOpt,
-      });
-      lastErr = null;
-      break;
-    } catch (err) {
-      lastErr = err;
-      console.error(
-        `Render attempt ${attempt}/${MAX_RENDER_ATTEMPTS} failed: ${err && err.message ? err.message : err}`,
-      );
-      if (attempt < MAX_RENDER_ATTEMPTS) {
-        // 清理可能残留的段输出,等待后重试(serveStatic 偶发拉取超时可恢复)
-        try { unlinkSync(outputAbsolute); } catch { /* ignore */ }
-        await new Promise((r) => setTimeout(r, 5000 * attempt));
+  for (const [s, e] of segs) {
+    const out = outputDir ? resolve(join(outputDir, `seg_${s}_${e}.mp4`)) : outputAbsolute;
+    let ok = false;
+    for (let attempt = 1; attempt <= MAX_RENDER_ATTEMPTS; attempt++) {
+      try {
+        await renderMedia({
+          serveUrl,
+          composition,
+          codec,
+          frameRange: [s, e],
+          outputLocation: out,
+          inputProps,
+          timeoutInMilliseconds: timeoutMs,
+          concurrency,
+          ...crfOpt,
+        });
+        ok = true;
+        break;
+      } catch (err) {
+        lastErr = err;
+        console.error(
+          `Segment ${s}-${e} attempt ${attempt}/${MAX_RENDER_ATTEMPTS} failed: ${err && err.message ? err.message : err}`,
+        );
+        if (attempt < MAX_RENDER_ATTEMPTS) {
+          // 清理可能残留的段输出,等待后重试(serveStatic 偶发拉取超时可恢复)
+          try { unlinkSync(out); } catch { /* ignore */ }
+          await new Promise((r) => setTimeout(r, 5000 * attempt));
+        }
       }
     }
-  }
-  if (lastErr) {
-    throw lastErr;
+    if (!ok) {
+      throw lastErr;
+    }
+    console.log(`Segment ${s}-${e} complete: ${out}`);
   }
 
   // Guarantee faststart (moov atom at the front) so merged output streams well.
-  if (existsSync(outputAbsolute)) {
-    const fsTmp = `${outputAbsolute}.faststart.tmp.mp4`;
-    try {
-      execSync(
-        `ffmpeg -y -i "${outputAbsolute}" -c copy -movflags +faststart "${fsTmp}"`,
-        { stdio: "inherit" },
-      );
-      rmSync(outputAbsolute, { force: true });
-      renameSync(fsTmp, outputAbsolute);
-      console.log("Applied faststart (moov atom moved to the front).");
-    } catch (err) {
-      if (existsSync(fsTmp)) rmSync(fsTmp, { force: true });
-      console.error(
-        `WARNING: faststart re-mux failed, keeping original output: ${err && err.message ? err.message : err}`,
-      );
+  for (const [s, e] of segs) {
+    const out = outputDir ? resolve(join(outputDir, `seg_${s}_${e}.mp4`)) : outputAbsolute;
+    if (existsSync(out)) {
+      const fsTmp = `${out}.faststart.tmp.mp4`;
+      try {
+        execSync(
+          `ffmpeg -y -i "${out}" -c copy -movflags +faststart "${fsTmp}"`,
+          { stdio: "inherit" },
+        );
+        rmSync(out, { force: true });
+        renameSync(fsTmp, out);
+      } catch (err) {
+        if (existsSync(fsTmp)) rmSync(fsTmp, { force: true });
+        console.error(
+          `WARNING: faststart re-mux failed, keeping original output: ${err && err.message ? err.message : err}`,
+        );
+      }
     }
   }
 
-  console.log(`\nSegment complete: ${outputAbsolute}`);
+  console.log(`\nSegment render complete (${segs.length} segment(s))`);
 } catch (err) {
   console.error("\nRender failed:", err && err.message ? err.message : err);
   process.exit(1);
