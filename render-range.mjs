@@ -147,10 +147,16 @@ const supportsCrf = ["h264", "h265", "hevc", "vp8", "vp9", "av1"].includes(codec
 const crfOpt = supportsCrf ? { crf: config.crf != null ? config.crf : 23 } : {};
 const timeoutMs = timeoutMsOverride != null ? timeoutMsOverride : (config.timeout_ms != null ? config.timeout_ms : 60000);
 
-const [frameStart, frameEnd] = frameRange;
-console.log(`Rendering frames ${frameStart}-${frameEnd} of "${compositionId}" @ ${fps} fps`);
+// 待渲染段:--segments 多段(单进程循环,Chrome 复用)或 --frame-range 单段。
+// 注意:segments 模式下 frameRange 为 null,不能解构。
+const segs = segments && segments.length > 0 ? segments : (frameRange ? [frameRange] : []);
+if (segs.length === 0) {
+  console.error("Error: no frame ranges to render");
+  process.exit(1);
+}
+console.log(`Rendering ${segs.length} segment(s) of "${compositionId}" @ ${fps} fps`);
 console.log(`Public dir: ${resolve(publicDir)}`);
-console.log(`Output: ${resolve(outputPath)}`);
+console.log(`Output: ${outputDir ? resolve(outputDir) : resolve(outputPath)}`);
 console.log(`Codec: ${codec}, concurrency: ${concurrency}`);
 
 const projectRoot = resolve(fileURLToPath(new URL(".", import.meta.url)));
@@ -177,22 +183,20 @@ try {
   composition.fps = fps;
 
   const totalFrames = composition.durationInFrames;
-  if (frameStart > frameEnd || frameEnd >= totalFrames) {
-    console.error(
-      `Error: frame range ${frameStart}-${frameEnd} out of bounds (composition has ${totalFrames} frames)`,
-    );
-    process.exit(1);
-  }
 
   const outputAbsolute = resolve(outputPath);
 
-  // 待渲染段:--segments 多段(单进程循环,Chrome 复用)或 --frame-range 单段。
   // 每段渲染失败不立即退出:重试该段(最多 MAX_RENDER_ATTEMPTS 次,连续失败才
   // 退出返回错误),重试前清理输出文件。
-  const segs = segments && segments.length > 0 ? segments : [[frameStart, frameEnd]];
   const MAX_RENDER_ATTEMPTS = 3;
   let lastErr = null;
   for (const [s, e] of segs) {
+    if (s > e || e >= totalFrames) {
+      console.error(
+        `Error: frame range ${s}-${e} out of bounds (composition has ${totalFrames} frames)`,
+      );
+      process.exit(1);
+    }
     const out = outputDir ? resolve(join(outputDir, `seg_${s}_${e}.mp4`)) : outputAbsolute;
     let ok = false;
     for (let attempt = 1; attempt <= MAX_RENDER_ATTEMPTS; attempt++) {
