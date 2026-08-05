@@ -56,6 +56,9 @@ Options:
                            (default: from config.timeout_ms or 60000)
   --serve-url <dir>        Reuse an existing webpack bundle directory instead
                            of bundling again (skips the bundling step)
+  --multi-process          Launch Chrome in multi-process mode on Linux
+                           (chromiumOptions.enableMultiProcessOnLinux; better
+                           multi-core utilization, higher memory usage)
   --help, -h               Show this help`);
   process.exit(0);
 }
@@ -74,6 +77,7 @@ let outputDir = null;
 let concurrency = 4;
 let timeoutMsOverride = null;
 let serveUrlOverride = null;
+let multiProcess = false;
 
 for (let i = 1; i < args.length; i++) {
   if (args[i] === "--public-dir" && i + 1 < args.length) {
@@ -105,6 +109,8 @@ for (let i = 1; i < args.length; i++) {
     }
   } else if (args[i] === "--output-dir" && i + 1 < args.length) {
     outputDir = args[++i];
+  } else if (args[i] === "--multi-process") {
+    multiProcess = true;
   }
 }
 
@@ -210,6 +216,7 @@ try {
           inputProps,
           timeoutInMilliseconds: timeoutMs,
           concurrency,
+          chromiumOptions: multiProcess ? { enableMultiProcessOnLinux: true } : undefined,
           ...crfOpt,
         });
         ok = true;
