@@ -157,15 +157,6 @@ const effectiveMemBytes =
     : hostMemBytes;
 const effectiveMemMB = Math.round(effectiveMemBytes / (1024 * 1024));
 
-// ─── Concurrency constants ────────────────────────────────────────────────
-// Per-render concurrency (parallel frames inside one Chrome) is capped so a
-// single Chrome's frame buffers stay predictable; when the CPU target exceeds
-// that cap, the surplus cores spill into additional segment workers (bounded by
-// memory). Base per-Chrome memory: ~1 GB @1080p / ~2 GB @4K.
-const RESERVE_MB = 1024;                // OS + Node.js + webpack bundle
-const MEM_FRAME_BUFFER_FACTOR = 1.2;    // headroom inside each Chrome for frame buffers
-const MAX_PER_RENDER_CONCURRENCY = 8;   // hard cap on parallel frames per Chrome
-
 // ─── CLI argument parsing ────────────────────────────────────────────────
 const args = process.argv.slice(2);
 if (args.length === 0 || args.includes("--help") || args.includes("-h")) {
@@ -179,10 +170,9 @@ Options:
                            parallelism) and concatenated. Videos ≤ one segment
                            render in one pass.
   --segment-workers <n>    Concurrent segment renders (max headless Chrome
-                           processes). Default: auto — one Chrome, and more when
-                           the CPU target exceeds the per-render concurrency cap.
-                           Per-render concurrency (frames in parallel per Chrome)
-                           is capped at 8; workers are memory-bounded (~75% RAM).
+                           processes). Default: 1 — single Chrome in
+                           multi-process mode (concurrency = cpu/2, renderer
+                           processes parallelize cores).
   --studio                 Open in Remotion Studio instead of rendering
   --help, -h               Show this help
 
@@ -250,47 +240,21 @@ if (resolution === "4K" && orientation === "vertical") {
   compositionId = "YamlVideo";
 }
 
-// ─── Adaptive concurrency: one Chrome up to the per-render cap, then spill ─
-// Total parallelism target ≈ half the effective cores. Per-render concurrency
-// is capped (8) so one Chrome's frame buffers stay bounded; if the target
-// exceeds the cap, the surplus cores spill into additional segment workers.
-// Workers are also memory-bounded (~75% of RAM) to avoid OOM.
-const memPerRenderMB = Math.round(
-  (resolution === "4K" ? 2048 : 1024) * MEM_FRAME_BUFFER_FACTOR,
-);
-
-const targetConcurrency = Math.max(1, Math.floor(effectiveCpuCount / 2));
-const renderConcurrency = Math.max(
-  1,
-  Math.min(MAX_PER_RENDER_CONCURRENCY, targetConcurrency),
-);
-const desiredWorkers = Math.max(1, Math.ceil(targetConcurrency / renderConcurrency));
-
-const memBudgetMB = Math.max(
-  1024,
-  Math.round(effectiveMemMB * 0.75) - RESERVE_MB,
-);
-const maxWorkersByMem = Math.max(1, Math.floor(memBudgetMB / memPerRenderMB));
-
+// ─── Concurrency: single worker, Chrome multi-process mode ────────────────
+// 每 2 核心 1 帧并发(concurrency = cpu/2),Chrome 以多进程模式启动
+// (enableMultiProcessOnLinux),并发帧由独立 renderer 进程并行消化多核,
+// 不再手动起多个 segment worker 进程。
+const renderConcurrency = Math.max(1, Math.floor(effectiveCpuCount / 2));
 if (segmentWorkers == null) {
-  segmentWorkers = Math.min(desiredWorkers, maxWorkersByMem);
-}
-
-if (segmentWorkers * memPerRenderMB > memBudgetMB) {
-  console.warn(
-    `WARNING: segment_workers=${segmentWorkers} × ~${memPerRenderMB}MB/Chrome exceeds the ` +
-      `memory budget (~${memBudgetMB}MB). Rendering may run out of memory — lower ` +
-      `--segment-workers or the video resolution if it fails.`,
-  );
+  segmentWorkers = 1;
 }
 
 console.log(
   `Resource detection: container=${inContainer ? "yes" : "no"}, ` +
     `cpu: host=${hostCpuCount} cgroup=${cgroupCpuCount ?? "n/a"} effective=${effectiveCpuCount}, ` +
     `mem: host=${Math.round(hostMemBytes / 1024 / 1024)}MB cgroup=${cgroupMemBytes != null ? Math.round(cgroupMemBytes / 1024 / 1024) + "MB" : "n/a"} effective=${effectiveMemMB}MB, ` +
-    `per-Chrome ~${memPerRenderMB}MB (${resolution}${orientation === "vertical" ? " vertical" : ""}) → ` +
-    `segment_workers=${segmentWorkers}, per-render concurrency=${renderConcurrency}, ` +
-    `estimated peak ≈ ${Math.round((segmentWorkers * memPerRenderMB) / 1024 * 10) / 10}GB`,
+    `segment_workers=${segmentWorkers}, per-render concurrency=${renderConcurrency} ` +
+    `(chrome multi-process mode)`,
 );
 
 // ─── Resolve asset paths ─────────────────────────────────────────────────
@@ -387,7 +351,10 @@ try {
 
   // Only pass concurrency when we computed a container-aware value; otherwise
   // omit it so Remotion uses its own default.
-  const concurrencyOpt = { concurrency: renderConcurrency };
+  const concurrencyOpt = {
+    concurrency: renderConcurrency,
+    chromiumOptions: { enableMultiProcessOnLinux: true },
+  };
 
   if (segments.length <= 1) {
     // Short video — single render, no segmentation overhead.
