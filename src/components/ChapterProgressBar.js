@@ -16,6 +16,11 @@ export const ChapterProgressBar = ({ props, chapters, totalFrames: totalFramesOv
 
   if (!props.showProgressBar) return null;
 
+  const barHeight = props.progressBarHeight ?? 65;
+  // Pill must fit inside the bar: bar = borderTop 2 + gutters + master strip 5.
+  // 65 → 46px pill, 130 → 111px pill, always leaves air above the strip.
+  const cardHeight = Math.max(24, barHeight - 19);
+
   return (
     <div
       style={{
@@ -23,7 +28,7 @@ export const ChapterProgressBar = ({ props, chapters, totalFrames: totalFramesOv
         bottom: 0,
         left: 0,
         right: 0,
-        height: props.progressBarHeight,
+        height: barHeight,
         background: "#fff",
         borderTop: "2px solid #e5e7eb",
         display: "flex",
@@ -49,8 +54,9 @@ export const ChapterProgressBar = ({ props, chapters, totalFrames: totalFramesOv
             key={ch.name}
             style={{
               flex: ch.duration_frames,
-              height: 76,
-              borderRadius: 38,
+              height: cardHeight,
+              borderRadius: cardHeight / 2,
+              boxSizing: "border-box",
               position: "relative",
               overflow: "hidden",
               background: isActive
@@ -71,7 +77,7 @@ export const ChapterProgressBar = ({ props, chapters, totalFrames: totalFramesOv
                   bottom: 0,
                   width: `${chProgress * 100}%`,
                   background: "rgba(255,255,255,0.25)",
-                  borderRadius: 38,
+                  borderRadius: cardHeight / 2,
                 }}
               />
             )}
